@@ -30,13 +30,17 @@ import time
 import uuid
 
 from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, session, url_for
-from deep_translator import GoogleTranslator
+import deepl
 import edge_tts
 
 import db
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "voicebridge-local-dev-secret")
+
+# DeepL APIキー（環境変数 DEEPL_API_KEY で設定してください。コードには直接書き込まない）
+DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY")
+_deepl_translator = deepl.Translator(DEEPL_API_KEY) if DEEPL_API_KEY else None
 
 db.init_db()
 
@@ -125,46 +129,33 @@ XTTS_SUPPORTED_LANGS = {
 }
 
 
-# 翻訳サービスが一時的に不調な時、エラーページの中身を「翻訳結果」として
-# 誤って返してしまうことがある。それを見分けるための、よくあるエラー文言の目印。
-_TRANSLATION_ERROR_MARKERS = (
-    "that's an error", "there was an error", "error 500", "error 404",
-    "<html", "<!doctype",
-)
-
-
-def looks_like_translation_error(text):
-    """翻訳結果が、実はエラーページの中身だった場合に True を返す"""
-    lowered = text.lower()
-    return any(marker in lowered for marker in _TRANSLATION_ERROR_MARKERS)
-
-
 def translate_with_retry(text, target_code, max_attempts=3):
     """
-    翻訳を実行する。一時的な不調（エラーページが返ってくる、接続できない等）の場合、
-    少し待ってから自動的に再試行する。
+    DeepL APIで翻訳を実行する。DeepLは正式なAPIのため、以前のような
+    「エラーページを翻訳結果と誤認する」問題は起きない。それでも、
+    一時的な通信不調に備えて、少し待ってから自動的に再試行する。
     """
+    if _deepl_translator is None:
+        raise RuntimeError("DeepL APIキーが設定されていません（環境変数 DEEPL_API_KEY を確認してください）")
+
     last_error = None
     for attempt in range(max_attempts):
         try:
-            result = GoogleTranslator(source="auto", target=target_code).translate(text)
+            result = _deepl_translator.translate_text(text, target_lang=target_code)
+            return result.text
         except Exception as e:
             last_error = e
             time.sleep(1)
-            continue
-
-        if result and result.strip() and not looks_like_translation_error(result):
-            return result
-
-        last_error = RuntimeError("翻訳サービスから正しい結果が返ってきませんでした")
-        time.sleep(1)
 
     raise last_error
 
 
 async def build_language_table():
-    """翻訳が対応する言語と、edge-ttsが対応する声を突き合わせて言語一覧を作る"""
-    translate_langs = GoogleTranslator().get_supported_languages(as_dict=True)
+    """DeepLが対応する言語と、edge-ttsが対応する声を突き合わせて言語一覧を作る"""
+    if _deepl_translator is None:
+        return {}
+
+    target_languages = _deepl_translator.get_target_languages()
     all_voices = await edge_tts.list_voices()
 
     voice_by_lang_code = {}
@@ -178,14 +169,18 @@ async def build_language_table():
             }
 
     table = {}
-    for name, code in translate_langs.items():
-        lookup_code = code.split("-")[0]
+    for lang in target_languages:
+        # DeepLのコードは "EN-US" や "PT-BR" のような地域付きの場合があるため、
+        # 先頭部分（例: "en"）だけを取り出してedge-ttsの声と突き合わせる
+        lookup_code = lang.code.split("-")[0].lower()
         if lookup_code in voice_by_lang_code:
-            table[name] = {
-                "translate_code": code,
+            # 表示名は小文字の英語名にして、これまでの言語選択画面と揃える
+            display_name = lang.name.lower()
+            table[display_name] = {
+                "translate_code": lang.code,
                 "sr_code": voice_by_lang_code[lookup_code]["locale"],
                 "voice": voice_by_lang_code[lookup_code]["voice_name"],
-                "xtts_code": code.lower() if code.lower() in XTTS_SUPPORTED_LANGS else None,
+                "xtts_code": lookup_code if lookup_code in XTTS_SUPPORTED_LANGS else None,
             }
     return table
 
