@@ -332,7 +332,7 @@ def process():
                 speaker_wav=voice_sample_path,
                 language=lang_info["xtts_code"],
                 file_path=filepath,
-                split_sentences=True,  # 長い文章は文ごとに区切って生成し、自然さを保ちやすくする
+                split_sentences=False,  # 文ごとの区切りで余計な音が混ざる現象があったため無効化
                 speed=0.95,  # 少しゆっくりめにして、発音の崩れを抑える
             )
             # trim_trailing_noise(filepath)  # 末尾トリミング処理は不具合のため一時的に無効化中
@@ -368,7 +368,7 @@ def process():
                     speaker_wav=voice_sample_path,
                     language=source_lang_info["xtts_code"],
                     file_path=original_filepath,
-                    split_sentences=True,
+                    split_sentences=False,
                     speed=0.95,
                 )
                 # trim_trailing_noise(original_filepath)  # 末尾トリミング処理は不具合のため一時的に無効化中
