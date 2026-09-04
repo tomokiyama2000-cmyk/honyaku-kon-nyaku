@@ -335,7 +335,7 @@ def process():
                 split_sentences=True,  # 長い文章は文ごとに区切って生成し、自然さを保ちやすくする
                 speed=0.95,  # 少しゆっくりめにして、発音の崩れを抑える
             )
-            trim_trailing_noise(filepath)  # 末尾の不要な間・ノイズを取り除く
+            # trim_trailing_noise(filepath)  # 末尾トリミング処理は不具合のため一時的に無効化中
         else:
             asyncio.run(_speak_to_file(translated, lang_info["voice"], filepath))
     except Exception as e:
@@ -371,7 +371,7 @@ def process():
                     split_sentences=True,
                     speed=0.95,
                 )
-                trim_trailing_noise(original_filepath)  # 末尾の不要な間・ノイズを取り除く
+                # trim_trailing_noise(original_filepath)  # 末尾トリミング処理は不具合のため一時的に無効化中
             else:
                 asyncio.run(_speak_to_file(text, source_lang_info["voice"], original_filepath))
             original_audio_url = f"/static/generated_audio/{original_filename}"
