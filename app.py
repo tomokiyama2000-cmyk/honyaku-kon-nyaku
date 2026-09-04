@@ -441,14 +441,20 @@ def trim_trailing_noise(filepath):
     """
     声のクローン音声の末尾に残りがちな、不要な無音・ノイズを取り除く。
     （XTTSは文章の最後に、わずかな「間」や雑音を生成することがあるため）
+
+    音声を一度逆再生の状態にしてから、その「先頭」（＝元の音声では「末尾」）の
+    無音だけを取り除き、また元の向きに戻す、という方法を使う。
+    こうすることで、文章の途中にある間（区切りの間）は保持したまま、
+    本当に末尾だけを安全にトリミングできる。
     """
     temp_path = filepath + ".trimmed.wav"
     try:
         result = subprocess.run(
             [
                 "ffmpeg", "-y", "-i", filepath,
-                "-af", "silenceremove=start_periods=0:stop_periods=1:"
-                       "stop_duration=0.25:stop_threshold=-40dB,"
+                "-af", "areverse,"
+                       "silenceremove=start_periods=1:start_duration=0:start_threshold=-40dB:detection=peak,"
+                       "areverse,"
                        "afade=t=out:d=0.05",  # ほんの一瞬フェードアウトさせ、切れ目のプツッという音を防ぐ
                 temp_path,
             ],
