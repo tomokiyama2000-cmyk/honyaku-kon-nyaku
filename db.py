@@ -43,9 +43,16 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                elevenlabs_voice_id TEXT
             )
         """)
+        # すでに存在するデータベースに、後から列を追加できるようにしておく
+        # （新規に列を追加した場合、既存のデータベースファイルには反映されないため）
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN elevenlabs_voice_id TEXT")
+        except sqlite3.OperationalError:
+            pass  # 既に列がある場合はここでエラーになるが、無視してよい
         conn.execute("""
             CREATE TABLE IF NOT EXISTS history (
                 id TEXT PRIMARY KEY,
@@ -105,6 +112,23 @@ def voice_sample_path_for_user(user_id):
     voice_sample_dir = os.path.join(data_dir, "voice_sample")
     os.makedirs(voice_sample_dir, exist_ok=True)
     return os.path.join(voice_sample_dir, f"user_{user_id}.wav")
+
+
+def get_elevenlabs_voice_id(user_id):
+    """指定した利用者の、ElevenLabs上に作成済みの声のID（voice_id）を取得する"""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT elevenlabs_voice_id FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+    return row["elevenlabs_voice_id"] if row else None
+
+
+def set_elevenlabs_voice_id(user_id, voice_id):
+    """指定した利用者の、ElevenLabs上の声のID（voice_id）を保存する"""
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE users SET elevenlabs_voice_id = ? WHERE id = ?", (voice_id, user_id)
+        )
 
 
 # ---- 会話履歴関連（利用者ごとに分離） ----

@@ -1,16 +1,16 @@
 """
-VoiceBridge - 発展課題3（拡張版2）: アプリ内で声を録音してクローンできる版
+VoiceBridge - 発展課題3（拡張版3）: DeepL + ElevenLabs（公式API）版
 
 パソコンでもスマホでも、ブラウザからアクセスして使えるVoiceBridgeです。
 画面上のボタンで自分の声を録音し、その声でクローン音声を生成できます。
 
 仕組み：
 - マイクの音声認識は、ブラウザ自体の機能（Web Speech API）を使う
+- 翻訳は DeepL公式API を使う
 - 「声を録音する」機能で、ブラウザから録音した音声をサーバーに送り、
-  ffmpegでWAV形式に変換して声のサンプルとして保存する
-- 「自分の声で読み上げる」にチェックを入れた時だけ、声のクローン（Coqui XTTS）を使う
+  ffmpegでWAV形式に変換したうえで、ElevenLabs公式APIに声のクローンとして登録する
+- 「自分のクローン音声で読み上げる」にチェックを入れた時だけ、ElevenLabsの声のクローンを使う
   （チェックを外している間は、これまで通り高速なedge-ttsの自然な声を使う）
-- 声のクローンAIモデルは、実際に必要になった最初のタイミングで読み込む（起動を速くするため）
 
 使い方：
     python3 app.py
@@ -19,7 +19,7 @@ VoiceBridge - 発展課題3（拡張版2）: アプリ内で声を録音して�
 
 【重要】
 - 声の録音・変換には、パソコンに ffmpeg がインストールされている必要があります。
-- 声のクローンを初めて使うとき、AIモデルの読み込みに時間がかかります（それ以降は速くなります）。
+- 翻訳には環境変数 DEEPL_API_KEY、声のクローンには環境変数 ELEVENLABS_API_KEY が必要です。
 """
 
 import asyncio
@@ -32,6 +32,7 @@ import uuid
 from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 import deepl
 import edge_tts
+from elevenlabs.client import ElevenLabs
 
 import db
 
@@ -41,6 +42,11 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "voicebridge-local-dev-secre
 # DeepL APIキー（環境変数 DEEPL_API_KEY で設定してください。コードには直接書き込まない）
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY")
 _deepl_translator = deepl.Translator(DEEPL_API_KEY) if DEEPL_API_KEY else None
+
+# ElevenLabs APIキー（環境変数 ELEVENLABS_API_KEY で設定してください。コードには直接書き込まない）
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
+_elevenlabs_client = ElevenLabs(api_key=ELEVENLABS_API_KEY) if ELEVENLABS_API_KEY else None
+ELEVENLABS_MODEL_ID = "eleven_multilingual_v2"  # 29以上の言語に対応する多言語モデル
 
 db.init_db()
 
@@ -118,16 +124,6 @@ def logout():
 # 対応言語一覧（起動時に一度だけ作成してキャッシュしておく）
 LANGUAGE_TABLE = {}
 
-# 声のクローン（XTTS）モデル。最初に必要になったタイミングで読み込む（起動を速くするため）
-XTTS_MODEL = None
-XTTS_LOAD_FAILED = False
-
-# XTTSが対応している言語コード（これ以外の言語は自動的にedge-ttsにフォールバックする）
-XTTS_SUPPORTED_LANGS = {
-    "en", "es", "fr", "de", "it", "pt", "pl", "tr", "ru", "nl",
-    "cs", "ar", "zh-cn", "ja", "hu", "ko", "hi",
-}
-
 
 def translate_with_retry(text, target_code, max_attempts=3):
     """
@@ -180,36 +176,55 @@ async def build_language_table():
                 "translate_code": lang.code,
                 "sr_code": voice_by_lang_code[lookup_code]["locale"],
                 "voice": voice_by_lang_code[lookup_code]["voice_name"],
-                "xtts_code": lookup_code if lookup_code in XTTS_SUPPORTED_LANGS else None,
             }
     return table
 
 
-def ensure_xtts_loaded():
-    """声のクローン（XTTS）モデルを、まだ読み込んでいなければ読み込む（最初の1回だけ時間がかかる）"""
-    global XTTS_MODEL, XTTS_LOAD_FAILED
+def clone_voice_from_sample(user_id, voice_sample_path):
+    """
+    声のサンプルファイルを使って、ElevenLabs上に声のクローンを作成（登録）する。
+    既にその利用者の声が登録済みの場合は、古いものを削除してから作り直す。
+    作成した声のID（voice_id）をデータベースに保存して返す。
+    """
+    if _elevenlabs_client is None:
+        raise RuntimeError("ElevenLabs APIキーが設定されていません（環境変数 ELEVENLABS_API_KEY を確認してください）")
 
-    if XTTS_MODEL is not None or XTTS_LOAD_FAILED:
-        return XTTS_MODEL
+    # 既存の声があれば、先に削除しておく（ElevenLabs側に声が増え続けるのを防ぐため）
+    old_voice_id = db.get_elevenlabs_voice_id(user_id)
+    if old_voice_id:
+        try:
+            _elevenlabs_client.voices.delete(voice_id=old_voice_id)
+        except Exception:
+            pass  # 削除に失敗しても、新しい声の作成は続行する
 
-    try:
-        from TTS.api import TTS
-        print("声のクローンAIモデルを読み込んでいます（初回のみ、少し時間がかかります）...")
-        XTTS_MODEL = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
-        print("声のクローンAIモデルの読み込みが完了しました。")
-    except Exception as e:
-        print(f"声のクローンAIモデルの読み込みに失敗しました: {e}")
-        XTTS_LOAD_FAILED = True
+    with open(voice_sample_path, "rb") as f:
+        response = _elevenlabs_client.voices.ivc.create(
+            name=f"voicebridge-user-{user_id}",
+            files=[f],
+        )
 
-    return XTTS_MODEL
+    db.set_elevenlabs_voice_id(user_id, response.voice_id)
+    return response.voice_id
+
+
+def speak_with_cloned_voice(text, voice_id, filepath):
+    """ElevenLabsの声のクローンを使って、テキストを読み上げた音声ファイルを作る"""
+    audio_chunks = _elevenlabs_client.text_to_speech.convert(
+        voice_id=voice_id,
+        text=text,
+        model_id=ELEVENLABS_MODEL_ID,
+        output_format="mp3_44100_128",
+    )
+    with open(filepath, "wb") as f:
+        for chunk in audio_chunks:
+            f.write(chunk)
 
 
 @app.route("/")
 def index():
     """トップページを表示する"""
     language_names = sorted(LANGUAGE_TABLE.keys())
-    voice_sample_path = db.voice_sample_path_for_user(session["user_id"])
-    has_voice_sample = os.path.exists(voice_sample_path)
+    has_voice_sample = db.get_elevenlabs_voice_id(session["user_id"]) is not None
     return render_template(
         "index.html",
         languages=language_names,
@@ -222,8 +237,8 @@ def index():
 @app.route("/api/save-voice-sample", methods=["POST"])
 def save_voice_sample():
     """
-    ブラウザで録音した音声を受け取り、ログイン中の利用者専用の声のサンプルとして保存する。
-    ブラウザは webm 形式などで録音するため、ffmpeg を使ってXTTSが使いやすいWAV形式に変換する。
+    ブラウザで録音した音声を受け取り、WAV形式に変換したうえで、
+    ElevenLabs上に「声のクローン」として登録する。
     """
     if "audio" not in request.files:
         return jsonify({"error": "音声データが送られてきませんでした"}), 400
@@ -264,7 +279,13 @@ def save_voice_sample():
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
-    return jsonify({"message": "声のサンプルを保存しました"})
+    # ElevenLabsに声のクローンとして登録する
+    try:
+        clone_voice_from_sample(session["user_id"], voice_sample_path)
+    except Exception as e:
+        return jsonify({"error": f"声のクローンの登録に失敗しました: {e}"}), 500
+
+    return jsonify({"message": "声のサンプルを保存し、クローン音声を登録しました"})
 
 
 @app.route("/api/process", methods=["POST"])
@@ -298,39 +319,18 @@ def process():
     if not translated or not translated.strip():
         return jsonify({"error": "翻訳結果が空でした。もう一度お試しください。"}), 500
 
-    voice_sample_path = db.voice_sample_path_for_user(session["user_id"])
-    has_voice_sample = os.path.exists(voice_sample_path)
-
-    # クローン希望で、かつ翻訳先か原文どちらかの言語がXTTSに対応していれば、モデルを読み込む
-    source_supports_clone = source_lang_info is not None and source_lang_info["xtts_code"] is not None
-    target_supports_clone = lang_info["xtts_code"] is not None
-    needs_model = want_clone_voice and has_voice_sample and (source_supports_clone or target_supports_clone)
-
-    model = None
-    if needs_model:
-        try:
-            model = ensure_xtts_loaded()
-        except Exception:
-            model = None
-
-    use_clone = want_clone_voice and model is not None and target_supports_clone
+    # クローン希望であれば、ElevenLabsに登録済みの声のIDを確認する
+    voice_id = db.get_elevenlabs_voice_id(session["user_id"]) if want_clone_voice else None
+    use_clone = want_clone_voice and voice_id is not None and _elevenlabs_client is not None
 
     # 翻訳後の文章の音声を作る
-    file_ext = "wav" if use_clone else "mp3"
+    file_ext = "mp3"
     filename = f"{uuid.uuid4().hex}.{file_ext}"
     filepath = os.path.join(AUDIO_DIR, filename)
 
     try:
         if use_clone:
-            model.tts_to_file(
-                text=translated,
-                speaker_wav=voice_sample_path,
-                language=lang_info["xtts_code"],
-                file_path=filepath,
-                split_sentences=False,  # 文ごとの区切りで余計な音が混ざる現象があったため無効化
-                speed=0.95,  # 少しゆっくりめにして、発音の崩れを抑える
-            )
-            # trim_trailing_noise(filepath)  # 末尾トリミング処理は不具合のため一時的に無効化中
+            speak_with_cloned_voice(translated, voice_id, filepath)
         else:
             asyncio.run(_speak_to_file(translated, lang_info["voice"], filepath))
     except Exception as e:
@@ -349,24 +349,13 @@ def process():
     # 原文の音声も作る（再生できるように）。翻訳文と同じく、チェックが入っていればクローン音声を使う。
     original_audio_url = None
     if source_lang_info:
-        use_clone_for_original = (
-            want_clone_voice and model is not None and source_lang_info["xtts_code"] is not None
-        )
-        original_ext = "wav" if use_clone_for_original else "mp3"
-        original_filename = f"{uuid.uuid4().hex}.{original_ext}"
+        use_clone_for_original = use_clone  # 翻訳文と同じ判定を使う（同じ声のクローンが使えるため）
+        original_filename = f"{uuid.uuid4().hex}.mp3"
         original_filepath = os.path.join(AUDIO_DIR, original_filename)
 
         try:
             if use_clone_for_original:
-                model.tts_to_file(
-                    text=text,
-                    speaker_wav=voice_sample_path,
-                    language=source_lang_info["xtts_code"],
-                    file_path=original_filepath,
-                    split_sentences=False,
-                    speed=0.95,
-                )
-                # trim_trailing_noise(original_filepath)  # 末尾トリミング処理は不具合のため一時的に無効化中
+                speak_with_cloned_voice(text, voice_id, original_filepath)
             else:
                 asyncio.run(_speak_to_file(text, source_lang_info["voice"], original_filepath))
             original_audio_url = f"/static/generated_audio/{original_filename}"
@@ -430,43 +419,6 @@ def clear_history():
 async def _speak_to_file(text, voice, filepath):
     communicate = edge_tts.Communicate(text, voice)
     await communicate.save(filepath)
-
-
-def trim_trailing_noise(filepath):
-    """
-    声のクローン音声の末尾に残りがちな、不要な無音・ノイズを取り除く。
-    （XTTSは文章の最後に、わずかな「間」や雑音を生成することがあるため）
-
-    音声を一度逆再生の状態にしてから、その「先頭」（＝元の音声では「末尾」）の
-    無音だけを取り除き、また元の向きに戻す、という方法を使う。
-    こうすることで、文章の途中にある間（区切りの間）は保持したまま、
-    本当に末尾だけを安全にトリミングできる。
-    """
-    temp_path = filepath + ".trimmed.wav"
-    try:
-        result = subprocess.run(
-            [
-                "ffmpeg", "-y", "-i", filepath,
-                "-af", "areverse,"
-                       "silenceremove=start_periods=1:start_duration=0:start_threshold=-40dB:detection=peak,"
-                       "areverse,"
-                       "afade=t=out:d=0.05",  # ほんの一瞬フェードアウトさせ、切れ目のプツッという音を防ぐ
-                temp_path,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode == 0 and os.path.exists(temp_path):
-            os.replace(temp_path, filepath)
-    except Exception:
-        pass  # トリミングに失敗しても、元の音声はそのまま使う
-    finally:
-        if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except Exception:
-                pass
 
 
 @app.route("/static/generated_audio/<path:filename>")
