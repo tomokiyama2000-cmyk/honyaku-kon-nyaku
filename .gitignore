@@ -1,0 +1,17 @@
+# 生成された音声ファイル（サイズが大きく、毎回作られるものなのでアップロード不要）
+static/generated_audio/*
+!static/generated_audio/.gitkeep
+
+# 会話履歴・声のサンプル（個人情報を含むため、GitHubにはアップロードしない）
+history.json
+voicebridge.db
+voice_sample/*
+!voice_sample/.gitkeep
+
+# Pythonの生成物
+__pycache__/
+*.pyc
+
+# OSが自動生成するファイル
+.DS_Store
+Thumbs.db

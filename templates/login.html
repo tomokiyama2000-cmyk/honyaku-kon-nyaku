@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ほんやくコンニャク - ログイン</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=IBM+Plex+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="login-screen">
+  <div class="gadget-badge">
+    <span class="gadget-badge__knob"></span>
+    <h1 class="app__title app__title--small">ほんやくコンニャク</h1>
+  </div>
+  <p class="app__tagline">ログインしてください</p>
+
+  <form method="POST" class="login-form">
+    <input type="text" name="username" placeholder="ユーザー名" autofocus>
+    <input type="password" name="password" placeholder="パスワード">
+    <button type="submit">入る</button>
+  </form>
+
+  {% if error %}
+    <p class="login-error">{{ error }}</p>
+  {% endif %}
+
+  <p class="auth-switch-link"><a href="{{ url_for('register') }}">初めての方はこちら（新規登録）</a></p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ほんやくコンニャク</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=IBM+Plex+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="app">
+  <header class="app__header">
+    <div class="gadget-badge">
+      <span class="gadget-badge__knob"></span>
+      <h1 class="app__title">ほんやくコンニャク</h1>
+    </div>
+    <p class="app__tagline">あなたの声で、どの言語とも話せるように。</p>
+    {% if username %}
+      <p class="header-note">{{ username }} さんとしてログイン中 ・ <a href="{{ url_for('logout') }}" class="logout-link">ログアウト</a></p>
+    {% endif %}
+  </header>
+
+  <section class="voice-setup">
+    <div class="voice-setup__info">
+      <span class="voice-setup__label">あなたの声のサンプル</span>
+      <span id="voiceSampleStatus" class="voice-setup__status {{ 'voice-setup__status--ok' if has_voice_sample else '' }}">
+        {{ "登録済み" if has_voice_sample else "未登録" }}
+      </span>
+    </div>
+    <button id="recordSampleButton" class="record-button">
+      <span id="recordButtonLabel">🎙️ 声を録音する（15秒）</span>
+    </button>
+    <p id="recordStatusText" class="record-status-text"></p>
+  </section>
+
+  <section class="lang-bar">
+    <div class="lang-bar__field">
+      <label for="sourceHint">話す言語</label>
+      <select id="sourceLanguage">
+        {% for name in languages %}
+          <option value="{{ name }}" {% if name == 'japanese' %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button id="swapButton" class="swap-button" title="言語を入れ替える" aria-label="言語を入れ替える">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 3L21 7L17 11"/><path d="M21 7H9"/>
+        <path d="M7 21L3 17L7 13"/><path d="M3 17H15"/>
+      </svg>
+    </button>
+
+    <div class="lang-bar__field">
+      <label for="targetLanguage">翻訳する言語</label>
+      <select id="targetLanguage">
+        {% for name in languages %}
+          <option value="{{ name }}" {% if name == 'english' %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </section>
+
+  <label class="clone-toggle">
+    <input type="checkbox" id="useCloneCheckbox" {{ "disabled" if not has_voice_sample }}>
+    <span>🎙️ 自分のクローン音声で読み上げる（少し時間がかかります）</span>
+  </label>
+
+  <label class="clone-toggle">
+    <input type="checkbox" id="manualModeCheckbox">
+    <span>🎚️ 自分で録音の開始・終了を操作する（話が途中で切れる場合はこちら）</span>
+  </label>
+
+  <section class="stage">
+    <div class="waveform" id="waveform" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <button id="micButton" class="mic-button" aria-label="話しかける">
+      <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="2" width="6" height="12" rx="3"/>
+        <path d="M5 10a7 7 0 0 0 14 0"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+      </svg>
+    </button>
+
+    <p id="statusText" class="status-text">マイクのボタンを押して話しかけてください</p>
+
+    <form id="textInputForm" class="text-input-row">
+      <input
+        type="text"
+        id="textInput"
+        class="text-input"
+        placeholder="または、ここに直接入力して送信..."
+        autocomplete="off"
+      >
+      <button type="submit" class="text-input-submit" aria-label="テキストを送信">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </button>
+    </form>
+  </section>
+
+  <div class="transcript-header">
+    <span class="transcript-header__label">会話履歴</span>
+    <button id="clearHistoryButton" class="clear-history-button">履歴を削除</button>
+  </div>
+
+  <section class="transcript" id="transcript" aria-live="polite">
+    <!-- 会話履歴がここに追加されていく -->
+  </section>
+</div>
+
+<audio id="player" hidden></audio>
+
+<script>
+  window.LANGUAGE_TABLE = {{ language_table | tojson }};
+</script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
