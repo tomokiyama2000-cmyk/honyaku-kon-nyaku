@@ -1,15 +1,19 @@
 """
-VoiceBridge - 発展課題3（拡張版3）: DeepL + ElevenLabs（公式API）版
+VoiceBridge - 発展課題3（拡張版4）: プロバイダー差し替え可能設計版
 
 パソコンでもスマホでも、ブラウザからアクセスして使えるVoiceBridgeです。
 画面上のボタンで自分の声を録音し、その声でクローン音声を生成できます。
 
 仕組み：
 - マイクの音声認識は、ブラウザ自体の機能（Web Speech API）を使う
-- 翻訳は DeepL公式API を使う
+- 翻訳・声のクローンは、それぞれ「プロバイダー」という部品に切り出してある
+  （providers/translation.py, providers/voice.py）。
+  現在は翻訳にDeepL、声のクローンにElevenLabsを使っているが、
+  将来コストや品質の都合で別のサービスに切り替えたくなった場合も、
+  この app.py 本体を書き換えずに、プロバイダーのファイルを追加するだけで対応できる。
 - 「声を録音する」機能で、ブラウザから録音した音声をサーバーに送り、
-  ffmpegでWAV形式に変換したうえで、ElevenLabs公式APIに声のクローンとして登録する
-- 「自分のクローン音声で読み上げる」にチェックを入れた時だけ、ElevenLabsの声のクローンを使う
+  ffmpegでWAV形式に変換したうえで、声のクローンプロバイダーに登録する
+- 「自分のクローン音声で読み上げる」にチェックを入れた時だけ、声のクローンを使う
   （チェックを外している間は、これまで通り高速なedge-ttsの自然な声を使う）
 
 使い方：
@@ -30,23 +34,19 @@ import time
 import uuid
 
 from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, session, url_for
-import deepl
 import edge_tts
-from elevenlabs.client import ElevenLabs
 
 import db
+from providers.translation import get_translation_provider
+from providers.voice import get_voice_provider
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "voicebridge-local-dev-secret")
 
-# DeepL APIキー（環境変数 DEEPL_API_KEY で設定してください。コードには直接書き込まない）
-DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY")
-_deepl_translator = deepl.Translator(DEEPL_API_KEY) if DEEPL_API_KEY else None
-
-# ElevenLabs APIキー（環境変数 ELEVENLABS_API_KEY で設定してください。コードには直接書き込まない）
-ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
-_elevenlabs_client = ElevenLabs(api_key=ELEVENLABS_API_KEY) if ELEVENLABS_API_KEY else None
-ELEVENLABS_MODEL_ID = "eleven_multilingual_v2"  # 29以上の言語に対応する多言語モデル
+# 翻訳・声のクローンの実際の処理は、それぞれのプロバイダーに任せる。
+# どのサービスを使うかは providers/translation.py, providers/voice.py 側で決まる。
+_translation_provider = get_translation_provider()
+_voice_provider = get_voice_provider()
 
 db.init_db()
 
@@ -126,32 +126,18 @@ LANGUAGE_TABLE = {}
 
 
 def translate_with_retry(text, target_code, max_attempts=3):
-    """
-    DeepL APIで翻訳を実行する。DeepLは正式なAPIのため、以前のような
-    「エラーページを翻訳結果と誤認する」問題は起きない。それでも、
-    一時的な通信不調に備えて、少し待ってから自動的に再試行する。
-    """
-    if _deepl_translator is None:
-        raise RuntimeError("DeepL APIキーが設定されていません（環境変数 DEEPL_API_KEY を確認してください）")
-
-    last_error = None
-    for attempt in range(max_attempts):
-        try:
-            result = _deepl_translator.translate_text(text, target_lang=target_code)
-            return result.text
-        except Exception as e:
-            last_error = e
-            time.sleep(1)
-
-    raise last_error
+    """翻訳プロバイダーを使ってテキストを翻訳する"""
+    if _translation_provider is None:
+        raise RuntimeError("翻訳サービスが設定されていません（APIキーの環境変数を確認してください）")
+    return _translation_provider.translate(text, target_code, max_attempts=max_attempts)
 
 
 async def build_language_table():
-    """DeepLが対応する言語と、edge-ttsが対応する声を突き合わせて言語一覧を作る"""
-    if _deepl_translator is None:
+    """翻訳プロバイダーが対応する言語と、edge-ttsが対応する声を突き合わせて言語一覧を作る"""
+    if _translation_provider is None:
         return {}
 
-    target_languages = _deepl_translator.get_target_languages()
+    target_languages = _translation_provider.get_languages()  # [(表示名, コード), ...]
     all_voices = await edge_tts.list_voices()
 
     voice_by_lang_code = {}
@@ -165,15 +151,15 @@ async def build_language_table():
             }
 
     table = {}
-    for lang in target_languages:
-        # DeepLのコードは "EN-US" や "PT-BR" のような地域付きの場合があるため、
+    for name, code in target_languages:
+        # 言語コードは "EN-US" や "PT-BR" のような地域付きの場合があるため、
         # 先頭部分（例: "en"）だけを取り出してedge-ttsの声と突き合わせる
-        lookup_code = lang.code.split("-")[0].lower()
+        lookup_code = code.split("-")[0].lower()
         if lookup_code in voice_by_lang_code:
-            # 表示名は小文字の英語名にして、これまでの言語選択画面と揃える
-            display_name = lang.name.lower()
+            # 表示名は小文字にして、これまでの言語選択画面と揃える
+            display_name = name.lower()
             table[display_name] = {
-                "translate_code": lang.code,
+                "translate_code": code,
                 "sr_code": voice_by_lang_code[lookup_code]["locale"],
                 "voice": voice_by_lang_code[lookup_code]["voice_name"],
             }
@@ -182,42 +168,22 @@ async def build_language_table():
 
 def clone_voice_from_sample(user_id, voice_sample_path):
     """
-    声のサンプルファイルを使って、ElevenLabs上に声のクローンを作成（登録）する。
+    声のサンプルファイルを使って、声のクローンプロバイダーに声を登録する。
     既にその利用者の声が登録済みの場合は、古いものを削除してから作り直す。
     作成した声のID（voice_id）をデータベースに保存して返す。
     """
-    if _elevenlabs_client is None:
-        raise RuntimeError("ElevenLabs APIキーが設定されていません（環境変数 ELEVENLABS_API_KEY を確認してください）")
+    if _voice_provider is None:
+        raise RuntimeError("声のクローンサービスが設定されていません（APIキーの環境変数を確認してください）")
 
-    # 既存の声があれば、先に削除しておく（ElevenLabs側に声が増え続けるのを防ぐため）
     old_voice_id = db.get_elevenlabs_voice_id(user_id)
-    if old_voice_id:
-        try:
-            _elevenlabs_client.voices.delete(voice_id=old_voice_id)
-        except Exception:
-            pass  # 削除に失敗しても、新しい声の作成は続行する
-
-    with open(voice_sample_path, "rb") as f:
-        response = _elevenlabs_client.voices.ivc.create(
-            name=f"voicebridge-user-{user_id}",
-            files=[f],
-        )
-
-    db.set_elevenlabs_voice_id(user_id, response.voice_id)
-    return response.voice_id
+    voice_id = _voice_provider.clone_voice(user_id, voice_sample_path, old_voice_id=old_voice_id)
+    db.set_elevenlabs_voice_id(user_id, voice_id)
+    return voice_id
 
 
 def speak_with_cloned_voice(text, voice_id, filepath):
-    """ElevenLabsの声のクローンを使って、テキストを読み上げた音声ファイルを作る"""
-    audio_chunks = _elevenlabs_client.text_to_speech.convert(
-        voice_id=voice_id,
-        text=text,
-        model_id=ELEVENLABS_MODEL_ID,
-        output_format="mp3_44100_128",
-    )
-    with open(filepath, "wb") as f:
-        for chunk in audio_chunks:
-            f.write(chunk)
+    """声のクローンプロバイダーを使って、テキストを読み上げた音声ファイルを作る"""
+    _voice_provider.speak(text, voice_id, filepath)
 
 
 @app.route("/")
@@ -321,7 +287,7 @@ def process():
 
     # クローン希望であれば、ElevenLabsに登録済みの声のIDを確認する
     voice_id = db.get_elevenlabs_voice_id(session["user_id"]) if want_clone_voice else None
-    use_clone = want_clone_voice and voice_id is not None and _elevenlabs_client is not None
+    use_clone = want_clone_voice and voice_id is not None and _voice_provider is not None
 
     # 翻訳後の文章の音声を作る
     file_ext = "mp3"
