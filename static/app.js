@@ -295,7 +295,7 @@ clearHistoryButton.addEventListener("click", async () => {
 loadHistory();
 
 // ---- 声のサンプルを録音する ----
-const RECORD_DURATION_MS = 15000; // 15秒間録音する
+const RECORD_DURATION_MS = 60000; // 60秒間録音する（ElevenLabsの推奨：1〜2分程度の明瞭な音声）
 
 let mediaRecorder = null;
 let recordedChunks = [];
@@ -324,7 +324,7 @@ recordSampleButton.addEventListener("click", async () => {
       stream.getTracks().forEach((track) => track.stop());
       isRecording = false;
       recordSampleButton.classList.remove("recording");
-      recordButtonLabel.textContent = "🎙️ 声を録音する（15秒）";
+      recordButtonLabel.textContent = "🎙️ 声を録音する（60秒）";
       await uploadVoiceSample();
       recordSampleButton.disabled = false;
     };

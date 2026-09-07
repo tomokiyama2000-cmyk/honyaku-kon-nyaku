@@ -45,11 +45,19 @@ class ElevenLabsVoiceProvider:
 
     def speak(self, text, voice_id, filepath):
         """指定した声のクローン（voice_id）でテキストを読み上げ、音声ファイルとして保存する"""
+        from elevenlabs import VoiceSettings
+
         audio_chunks = self._client.text_to_speech.convert(
             voice_id=voice_id,
             text=text,
             model_id=self.MODEL_ID,
             output_format="mp3_44100_128",
+            voice_settings=VoiceSettings(
+                stability=0.5,  # 声の安定性（低いほど表現豊かだが不安定になりやすい）
+                similarity_boost=0.85,  # 元の声にどれだけ似せるか（高いほど本人の声に近づく）
+                style=0.0,
+                use_speaker_boost=True,  # 声の明瞭さ・類似度を高める補正
+            ),
         )
         with open(filepath, "wb") as f:
             for chunk in audio_chunks:

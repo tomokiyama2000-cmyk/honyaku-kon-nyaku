@@ -231,15 +231,11 @@ def save_voice_sample():
         result = subprocess.run(
             [
                 "ffmpeg", "-y", "-i", temp_path,
-                "-ar", "24000", "-ac", "1",
-                # 音声フィルタを順番に適用する：
-                # 1. highpass: 120Hz以下の低い音（鼻息や部屋の低いノイズなど）をカットする
-                # 2. afftdn: 全体的な背景ノイズを軽減する
-                # 3. silenceremove: 無音区間（間）を自動的に取り除く。声のクローンが「間」の
-                #    話し方を真似してしまうのを防ぎ、より流ちょうな読み上げにするため
-                "-af", "highpass=f=120,afftdn=nf=-25,"
-                       "silenceremove=start_periods=1:start_duration=0.1:start_threshold=-35dB:"
-                       "stop_periods=-1:stop_duration=0.3:stop_threshold=-35dB",
+                "-ar", "44100", "-ac", "1",
+                # ElevenLabsの公式ガイドラインによると、声のクローンは「デジタル処理の強さ」よりも
+                # 「録音環境そのものの静かさ・明瞭さ」の方が重要とされている。過度な加工はかえって
+                # 声の自然な特徴を損なう可能性があるため、最低限の処理（低音ノイズの除去）に留める。
+                "-af", "highpass=f=80",
                 voice_sample_path,
             ],
             capture_output=True,
