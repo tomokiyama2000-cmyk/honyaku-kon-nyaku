@@ -43,22 +43,30 @@ class ElevenLabsVoiceProvider:
             )
         return response.voice_id
 
-    def speak(self, text, voice_id, filepath, speed=1.0):
-        """指定した声のクローン（voice_id）でテキストを読み上げ、音声ファイルとして保存する"""
+    def speak(self, text, voice_id, filepath, speed=None):
+        """
+        指定した声のクローン（voice_id）でテキストを読み上げ、音声ファイルとして保存する。
+        speed を指定しない場合、ElevenLabs側の速度調整を一切行わない
+        （speedパラメータを渡すこと自体が、音質にわずかな影響を与えることがあるため、
+        指定が無い場合は省略して、最も自然な音質を優先する）。
+        """
         from elevenlabs import VoiceSettings
+
+        settings_kwargs = {
+            "stability": 0.5,  # 声の安定性（低いほど表現豊かだが不安定になりやすい）
+            "similarity_boost": 0.85,  # 元の声にどれだけ似せるか（高いほど本人の声に近づく）
+            "style": 0.0,
+            "use_speaker_boost": True,  # 声の明瞭さ・類似度を高める補正
+        }
+        if speed is not None:
+            settings_kwargs["speed"] = speed
 
         audio_chunks = self._client.text_to_speech.convert(
             voice_id=voice_id,
             text=text,
             model_id=self.MODEL_ID,
             output_format="mp3_44100_128",
-            voice_settings=VoiceSettings(
-                stability=0.5,  # 声の安定性（低いほど表現豊かだが不安定になりやすい）
-                similarity_boost=0.85,  # 元の声にどれだけ似せるか（高いほど本人の声に近づく）
-                style=0.0,
-                use_speaker_boost=True,  # 声の明瞭さ・類似度を高める補正
-                speed=speed,  # 読み上げ速度（1.0が標準）
-            ),
+            voice_settings=VoiceSettings(**settings_kwargs),
         )
         with open(filepath, "wb") as f:
             for chunk in audio_chunks:

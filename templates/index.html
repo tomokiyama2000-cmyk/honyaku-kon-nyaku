@@ -46,7 +46,7 @@
       <label for="sourceHint">話す言語</label>
       <select id="sourceLanguage">
         {% for name in languages %}
-          <option value="{{ name }}" {% if name == 'japanese' %}selected{% endif %}>{{ name }}</option>
+          <option value="{{ name }}" {% if name.startswith('日本語') %}selected{% endif %}>{{ name }}</option>
         {% endfor %}
       </select>
     </div>
@@ -62,7 +62,7 @@
       <label for="targetLanguage">翻訳する言語</label>
       <select id="targetLanguage">
         {% for name in languages %}
-          <option value="{{ name }}" {% if name == 'english' %}selected{% endif %}>{{ name }}</option>
+          <option value="{{ name }}" {% if name.startswith('英語') %}selected{% endif %}>{{ name }}</option>
         {% endfor %}
       </select>
     </div>

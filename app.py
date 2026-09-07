@@ -135,6 +135,35 @@ def logout():
 # 対応言語一覧（起動時に一度だけ作成してキャッシュしておく）
 LANGUAGE_TABLE = {}
 
+# 主要な言語の日本語名（表示用）。無ければ英語名だけを表示する。
+LANGUAGE_JAPANESE_NAMES = {
+    "en": "英語", "zh": "中国語", "es": "スペイン語", "hi": "ヒンディー語",
+    "ar": "アラビア語", "pt": "ポルトガル語", "ru": "ロシア語", "ja": "日本語",
+    "de": "ドイツ語", "fr": "フランス語", "ko": "韓国語", "it": "イタリア語",
+    "tr": "トルコ語", "vi": "ベトナム語", "pl": "ポーランド語", "nl": "オランダ語",
+    "id": "インドネシア語", "th": "タイ語", "sv": "スウェーデン語", "uk": "ウクライナ語",
+    "el": "ギリシャ語", "cs": "チェコ語", "da": "デンマーク語", "fi": "フィンランド語",
+    "hu": "ハンガリー語", "ro": "ルーマニア語", "sk": "スロバキア語", "bg": "ブルガリア語",
+    "et": "エストニア語", "lv": "ラトビア語", "lt": "リトアニア語", "sl": "スロベニア語",
+    "nb": "ノルウェー語", "nn": "ノルウェー語",
+}
+
+# 世界的な主要言語ほど上に表示されるようにするための優先順位（数字が小さいほど上位）。
+# 話者数・国際的な使用頻度などを踏まえたおおよその目安。
+LANGUAGE_PRIORITY_ORDER = [
+    "en", "zh", "hi", "es", "ar", "fr", "pt", "ru", "ja", "de",
+    "ko", "it", "tr", "vi", "pl", "nl", "id", "th", "sv", "uk",
+    "el", "cs", "da", "fi", "hu", "ro", "sk", "bg", "et", "lv", "lt", "sl",
+]
+
+
+def _language_priority(lookup_code):
+    """言語コードから、表示順を決めるための優先順位（数字）を返す"""
+    try:
+        return LANGUAGE_PRIORITY_ORDER.index(lookup_code)
+    except ValueError:
+        return len(LANGUAGE_PRIORITY_ORDER) + 1  # リストに無い言語は最後の方に表示する
+
 
 def translate_with_retry(text, target_code, max_attempts=3):
     """翻訳プロバイダーを使ってテキストを翻訳する"""
@@ -167,12 +196,15 @@ async def build_language_table():
         # 先頭部分（例: "en"）だけを取り出してedge-ttsの声と突き合わせる
         lookup_code = code.split("-")[0].lower()
         if lookup_code in voice_by_lang_code:
-            # 表示名は小文字にして、これまでの言語選択画面と揃える
-            display_name = name.lower()
+            # 表示名は「日本語（Japanese）」のように、日本語名と英語名を併記する
+            # （日本語名が用意されていない言語は、英語名だけを表示する）
+            japanese_name = LANGUAGE_JAPANESE_NAMES.get(lookup_code)
+            display_name = f"{japanese_name}（{name}）" if japanese_name else name
             table[display_name] = {
                 "translate_code": code,
                 "sr_code": voice_by_lang_code[lookup_code]["locale"],
                 "voice": voice_by_lang_code[lookup_code]["voice_name"],
+                "priority": _language_priority(lookup_code),
             }
     return table
 
@@ -192,7 +224,7 @@ def clone_voice_from_sample(user_id, voice_sample_path):
     return voice_id
 
 
-def speak_with_cloned_voice(text, voice_id, filepath, speed=1.0):
+def speak_with_cloned_voice(text, voice_id, filepath, speed=None):
     """声のクローンプロバイダーを使って、テキストを読み上げた音声ファイルを作る"""
     _voice_provider.speak(text, voice_id, filepath, speed=speed)
 
@@ -200,7 +232,11 @@ def speak_with_cloned_voice(text, voice_id, filepath, speed=1.0):
 @app.route("/")
 def index():
     """トップページを表示する"""
-    language_names = sorted(LANGUAGE_TABLE.keys())
+    # 世界的な主要言語ほど上に表示されるように並び替える（同じ優先度なら表示名の順）
+    language_names = sorted(
+        LANGUAGE_TABLE.keys(),
+        key=lambda name: (LANGUAGE_TABLE[name]["priority"], name),
+    )
     has_voice_sample = db.get_voice_provider_id(session["user_id"]) is not None
     return render_template(
         "index.html",
@@ -329,8 +365,8 @@ def process():
 
         try:
             if use_clone_for_original:
-                # 原文は標準の速度で読み上げる（元々の自然な話し方に近いため）
-                speak_with_cloned_voice(text, voice_id, original_filepath, speed=1.0)
+                # 原文は速度を指定せず、最も自然な音質を優先する
+                speak_with_cloned_voice(text, voice_id, original_filepath)
             else:
                 asyncio.run(_speak_to_file(text, source_lang_info["voice"], original_filepath))
             original_audio_url = f"/static/generated_audio/{original_filename}"
