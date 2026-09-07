@@ -43,6 +43,15 @@ from providers.voice import get_voice_provider
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "voicebridge-local-dev-secret")
 
+# アップロードできるファイルの最大サイズ（10MB）。
+# 声の録音（15秒程度）は数百KB〜数MB程度で収まるため、これで十分な余裕がある。
+# 上限を設けないと、不正または不具合のあるリクエストでディスクを圧迫されるおそれがある。
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
+
+# セッションクッキーのセキュリティ設定
+app.config["SESSION_COOKIE_HTTPONLY"] = True  # JavaScriptからクッキーを読めないようにする
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # 他サイトからの不正なリクエストを受けにくくする
+
 # 翻訳・声のクローンの実際の処理は、それぞれのプロバイダーに任せる。
 # どのサービスを使うかは providers/translation.py, providers/voice.py 側で決まる。
 _translation_provider = get_translation_provider()
@@ -80,6 +89,8 @@ def register():
 
         if not username or not password:
             error = "ユーザー名とパスワードを入力してください。"
+        elif len(username) > 50:
+            error = "ユーザー名は50文字以内にしてください。"
         elif password != password_confirm:
             error = "パスワードが一致しません。"
         elif len(password) < 6:
@@ -175,9 +186,9 @@ def clone_voice_from_sample(user_id, voice_sample_path):
     if _voice_provider is None:
         raise RuntimeError("声のクローンサービスが設定されていません（APIキーの環境変数を確認してください）")
 
-    old_voice_id = db.get_elevenlabs_voice_id(user_id)
+    old_voice_id = db.get_voice_provider_id(user_id)
     voice_id = _voice_provider.clone_voice(user_id, voice_sample_path, old_voice_id=old_voice_id)
-    db.set_elevenlabs_voice_id(user_id, voice_id)
+    db.set_voice_provider_id(user_id, voice_id)
     return voice_id
 
 
@@ -190,7 +201,7 @@ def speak_with_cloned_voice(text, voice_id, filepath):
 def index():
     """トップページを表示する"""
     language_names = sorted(LANGUAGE_TABLE.keys())
-    has_voice_sample = db.get_elevenlabs_voice_id(session["user_id"]) is not None
+    has_voice_sample = db.get_voice_provider_id(session["user_id"]) is not None
     return render_template(
         "index.html",
         languages=language_names,
@@ -286,7 +297,7 @@ def process():
         return jsonify({"error": "翻訳結果が空でした。もう一度お試しください。"}), 500
 
     # クローン希望であれば、ElevenLabsに登録済みの声のIDを確認する
-    voice_id = db.get_elevenlabs_voice_id(session["user_id"]) if want_clone_voice else None
+    voice_id = db.get_voice_provider_id(session["user_id"]) if want_clone_voice else None
     use_clone = want_clone_voice and voice_id is not None and _voice_provider is not None
 
     # 翻訳後の文章の音声を作る
@@ -369,17 +380,34 @@ def get_history():
 @app.route("/api/history/<entry_id>", methods=["DELETE"])
 def delete_history_entry_route(entry_id):
     """ログイン中の利用者の履歴から、指定した1件だけを削除する（他人の履歴は削除できない）"""
-    deleted = db.delete_history_entry(session["user_id"], entry_id)
-    if not deleted:
+    deleted_audio_urls = db.delete_history_entry(session["user_id"], entry_id)
+    if deleted_audio_urls is None:
         return jsonify({"error": "該当する履歴が見つかりませんでした"}), 404
+    _delete_audio_files(deleted_audio_urls)
     return jsonify({"message": "削除しました"})
 
 
 @app.route("/api/history", methods=["DELETE"])
 def clear_history():
     """ログイン中の利用者の会話履歴をすべて削除する"""
-    db.clear_history_for_user(session["user_id"])
+    deleted_audio_urls = db.clear_history_for_user(session["user_id"])
+    _delete_audio_files(deleted_audio_urls)
     return jsonify({"message": "履歴を削除しました"})
+
+
+def _delete_audio_files(audio_urls):
+    """
+    履歴の削除に伴って、不要になった音声ファイルをディスクから削除する。
+    （削除しないままにしておくと、使われない音声ファイルが増え続けてしまうため）
+    """
+    for url in audio_urls:
+        filename = os.path.basename(url)
+        filepath = os.path.join(AUDIO_DIR, filename)
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except Exception:
+            pass  # ファイル削除に失敗しても、履歴の削除自体は成功として扱う
 
 
 async def _speak_to_file(text, voice, filepath):
@@ -396,6 +424,12 @@ def serve_audio(filename):
 def handle_server_error(e):
     """予期しないサーバーエラーが起きた場合、分かりやすいJSONで返す（API向け）"""
     return jsonify({"error": "サーバーで予期しないエラーが発生しました。もう一度お試しください。"}), 500
+
+
+@app.errorhandler(413)
+def handle_too_large(e):
+    """アップロードされたファイルが大きすぎる場合、分かりやすいJSONで返す"""
+    return jsonify({"error": "アップロードされたデータが大きすぎます。"}), 413
 
 
 if __name__ == "__main__":

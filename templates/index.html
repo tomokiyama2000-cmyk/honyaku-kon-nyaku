@@ -22,6 +22,12 @@
     {% endif %}
   </header>
 
+  {% if not languages %}
+    <section class="setup-warning">
+      ⚠️ 翻訳サービスの準備ができていません。サーバーを再起動するか、APIキーの設定を確認してください。
+    </section>
+  {% endif %}
+
   <section class="voice-setup">
     <div class="voice-setup__info">
       <span class="voice-setup__label">あなたの声のサンプル</span>
