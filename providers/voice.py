@@ -57,6 +57,7 @@ class ElevenLabsVoiceProvider:
                 similarity_boost=0.85,  # 元の声にどれだけ似せるか（高いほど本人の声に近づく）
                 style=0.0,
                 use_speaker_boost=True,  # 声の明瞭さ・類似度を高める補正
+                speed=0.9,  # 読み上げ速度（1.0が標準。少しゆっくりめにして聞き取りやすくする）
             ),
         )
         with open(filepath, "wb") as f:
