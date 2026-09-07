@@ -39,6 +39,7 @@ class ElevenLabsVoiceProvider:
             response = self._client.voices.ivc.create(
                 name=f"voicebridge-user-{user_id}",
                 files=[f],
+                labels={},  # 省略すると、ライブラリ側の不具合でエラーになることがあるため明示的に空にする
             )
         return response.voice_id
 
