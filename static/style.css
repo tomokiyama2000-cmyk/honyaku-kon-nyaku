@@ -486,6 +486,8 @@ body {
 }
 
 .record-button {
+  position: relative;
+  overflow: hidden;
   background: var(--panel-raised);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -494,6 +496,20 @@ body {
   font-size: 0.9rem;
   cursor: pointer;
   font-family: inherit;
+}
+
+.record-button__progress {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  background: rgba(232, 91, 61, 0.18);
+  transition: width 1s linear;
+  z-index: 0;
+}
+
+.record-button__label {
+  position: relative;
+  z-index: 1;
 }
 
 .record-button.recording {
@@ -521,3 +537,71 @@ body {
 }
 
 .clone-toggle input:disabled + span { opacity: 0.5; }
+
+/* ---- Copy button ---- */
+.copy-button {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.copy-button:hover { background: var(--accent); color: #FFFFFF; }
+
+/* ---- Timestamp ---- */
+.bubble-pair__footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.entry-timestamp {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+/* ---- Empty state ---- */
+.transcript-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 32px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  line-height: 1.6;
+}
+
+/* ---- Error banner ---- */
+.error-banner {
+  background: rgba(194, 74, 54, 0.1);
+  border: 1px solid rgba(194, 74, 54, 0.3);
+  color: var(--danger);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  text-align: center;
+  animation: banner-in 0.2s ease;
+}
+
+@keyframes banner-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Mic button processing state ---- */
+.mic-button.processing {
+  animation: mic-pulse 1s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}

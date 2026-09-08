@@ -14,6 +14,7 @@ const useCloneCheckbox = document.getElementById("useCloneCheckbox");
 const manualModeCheckbox = document.getElementById("manualModeCheckbox");
 const recordSampleButton = document.getElementById("recordSampleButton");
 const recordButtonLabel = document.getElementById("recordButtonLabel");
+const recordProgress = document.getElementById("recordProgress");
 const recordStatusText = document.getElementById("recordStatusText");
 const voiceSampleStatus = document.getElementById("voiceSampleStatus");
 const textInputForm = document.getElementById("textInputForm");
@@ -105,6 +106,7 @@ if (recognition) {
 async function sendToServer(text) {
   statusText.textContent = "翻訳・音声生成中...";
   micButton.disabled = true; // 処理中は二重送信を防ぐため、マイクボタンを一時的に無効化する
+  micButton.classList.add("processing");
 
   try {
     const response = await fetch("/api/process", {
@@ -122,16 +124,20 @@ async function sendToServer(text) {
     try {
       data = await response.json();
     } catch (parseErr) {
-      statusText.textContent = "サーバーからの応答が正しく読み取れませんでした。もう一度お試しください。";
+      showError("サーバーからの応答が正しく読み取れませんでした。もう一度お試しください。");
       return;
     }
 
     if (!response.ok) {
-      statusText.textContent = `エラー: ${data.error || "不明なエラーが発生しました"}`;
+      showError(data.error || "不明なエラーが発生しました");
       return;
     }
 
-    addToTranscript(data.original_text, data.translated_text, data.original_audio_url, data.translated_audio_url, data.voice_cloned, data.id);
+    addToTranscript(
+      data.original_text, data.translated_text, data.original_audio_url,
+      data.translated_audio_url, data.voice_cloned, data.id, data.timestamp
+    );
+    scrollToTranscriptTop();
 
     player.src = data.translated_audio_url;
     try {
@@ -143,10 +149,24 @@ async function sendToServer(text) {
 
     statusText.textContent = "マイクのボタンを押して話しかけてください";
   } catch (err) {
-    statusText.textContent = "サーバーとの通信に失敗しました。サーバーが起動しているか確認してください。";
+    showError("サーバーとの通信に失敗しました。サーバーが起動しているか確認してください。");
   } finally {
     micButton.disabled = false;
+    micButton.classList.remove("processing");
   }
+}
+
+function showError(message) {
+  statusText.textContent = "マイクのボタンを押して話しかけてください";
+  const banner = document.createElement("div");
+  banner.className = "error-banner";
+  banner.textContent = message;
+  document.querySelector(".stage").appendChild(banner);
+  setTimeout(() => banner.remove(), 6000);
+}
+
+function scrollToTranscriptTop() {
+  transcript.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function makePlayButton(audioUrl) {
@@ -154,16 +174,22 @@ function makePlayButton(audioUrl) {
   button.className = "play-button";
   button.type = "button";
   button.setAttribute("aria-label", "再生する");
-  button.innerHTML = `
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-      <path d="M8 5v14l11-7z"/>
-    </svg>
-  `;
+
+  const playIcon = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+  const pauseIcon = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>`;
+  button.innerHTML = playIcon;
+
   if (!audioUrl) {
     button.disabled = true;
     return button;
   }
+
   button.addEventListener("click", async () => {
+    const isThisPlaying = player.src.endsWith(audioUrl) && !player.paused;
+    if (isThisPlaying) {
+      player.pause();
+      return;
+    }
     player.src = audioUrl;
     try {
       await player.play();
@@ -171,13 +197,50 @@ function makePlayButton(audioUrl) {
       // 再生に失敗しても、画面全体は壊さない
     }
   });
+
+  // 再生中はボタンのアイコンを一時停止マークに切り替える
+  player.addEventListener("play", () => {
+    button.innerHTML = player.src.endsWith(audioUrl) ? pauseIcon : playIcon;
+  });
+  player.addEventListener("pause", () => {
+    if (player.src.endsWith(audioUrl)) button.innerHTML = playIcon;
+  });
+  player.addEventListener("ended", () => {
+    if (player.src.endsWith(audioUrl)) button.innerHTML = playIcon;
+  });
+
   return button;
 }
 
-function addToTranscript(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId) {
+function makeCopyButton(text) {
+  const button = document.createElement("button");
+  button.className = "copy-button";
+  button.type = "button";
+  button.setAttribute("aria-label", "コピーする");
+  button.innerHTML = `
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="9" width="12" height="12" rx="2"/>
+      <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>
+    </svg>
+  `;
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.innerHTML;
+      button.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+      setTimeout(() => { button.innerHTML = original; }, 1500);
+    } catch (err) {
+      // コピーに失敗しても、画面全体は壊さない
+    }
+  });
+  return button;
+}
+
+function addToTranscript(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId, timestamp) {
   const tag = voiceCloned
     ? '<span class="voice-tag voice-tag--cloned">あなたの声</span>'
     : '<span class="voice-tag voice-tag--natural">標準の声</span>';
+  const timeLabel = timestamp ? `<span class="entry-timestamp">${formatTimestamp(timestamp)}</span>` : "";
   const pair = document.createElement("div");
   pair.className = "bubble-pair";
   pair.innerHTML = `
@@ -188,18 +251,45 @@ function addToTranscript(original, translated, originalAudioUrl, translatedAudio
       <div class="bubble bubble--translated">${escapeHtml(translated)}</div>
     </div>
     <div class="bubble-pair__footer">
-      ${tag}
+      <span class="bubble-pair__footer-left">${tag}${timeLabel}</span>
     </div>
   `;
 
   pair.querySelector(".bubble-row--source").appendChild(makePlayButton(originalAudioUrl));
-  pair.querySelector(".bubble-row--translated").appendChild(makePlayButton(translatedAudioUrl));
+
+  const translatedRow = pair.querySelector(".bubble-row--translated");
+  translatedRow.appendChild(makeCopyButton(translated));
+  translatedRow.appendChild(makePlayButton(translatedAudioUrl));
 
   if (entryId) {
     pair.querySelector(".bubble-pair__footer").appendChild(makeDeleteButton(entryId, pair));
   }
 
   transcript.prepend(pair);
+  updateEmptyState();
+}
+
+function formatTimestamp(timestamp) {
+  // "2026-09-08 12:34:56"（サーバー側はUTC）を、見やすい表示に変換する
+  try {
+    const date = new Date(timestamp.replace(" ", "T") + "Z");
+    return date.toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  } catch (err) {
+    return "";
+  }
+}
+
+function updateEmptyState() {
+  const hasEntries = transcript.querySelector(".bubble-pair") !== null;
+  let emptyState = transcript.parentElement.querySelector(".transcript-empty");
+  if (hasEntries) {
+    if (emptyState) emptyState.remove();
+  } else if (!emptyState) {
+    emptyState = document.createElement("div");
+    emptyState.className = "transcript-empty";
+    emptyState.textContent = "まだ会話履歴がありません。マイクのボタンを押すか、下のテキスト欄に入力して話しかけてみましょう。";
+    transcript.after(emptyState);
+  }
 }
 
 function makeDeleteButton(entryId, pairElement) {
@@ -213,6 +303,7 @@ function makeDeleteButton(entryId, pairElement) {
       const response = await fetch(`/api/history/${entryId}`, { method: "DELETE" });
       if (response.ok) {
         pairElement.remove();
+        updateEmptyState();
       } else {
         statusText.textContent = "この履歴の削除に失敗しました。";
       }
@@ -262,7 +353,10 @@ swapButton.addEventListener("click", () => {
 async function loadHistory() {
   try {
     const response = await fetch("/api/history");
-    if (!response.ok) return;
+    if (!response.ok) {
+      updateEmptyState();
+      return;
+    }
     const history = await response.json();
 
     // 履歴は古い順に保存されているので、そのままの順で追加していくと
@@ -274,11 +368,14 @@ async function loadHistory() {
         entry.original_audio_url,
         entry.translated_audio_url,
         entry.voice_cloned,
-        entry.id
+        entry.id,
+        entry.timestamp
       );
     });
+    updateEmptyState();
   } catch (err) {
     // 履歴が読み込めなくても、アプリ自体は使えるようにする
+    updateEmptyState();
   }
 }
 
@@ -287,6 +384,7 @@ clearHistoryButton.addEventListener("click", async () => {
   try {
     await fetch("/api/history", { method: "DELETE" });
     transcript.innerHTML = "";
+    updateEmptyState();
   } catch (err) {
     statusText.textContent = "履歴の削除に失敗しました。";
   }
@@ -325,6 +423,7 @@ recordSampleButton.addEventListener("click", async () => {
       isRecording = false;
       recordSampleButton.classList.remove("recording");
       recordButtonLabel.textContent = "🎙️ 声を録音する（60秒）";
+      recordProgress.style.width = "0%";
       await uploadVoiceSample();
       recordSampleButton.disabled = false;
     };
@@ -333,12 +432,15 @@ recordSampleButton.addEventListener("click", async () => {
     isRecording = true;
     recordSampleButton.classList.add("recording");
 
-    let secondsLeft = RECORD_DURATION_MS / 1000;
+    const totalSeconds = RECORD_DURATION_MS / 1000;
+    let secondsLeft = totalSeconds;
     recordButtonLabel.textContent = `録音中...（残り${secondsLeft}秒）`;
     recordStatusText.textContent = "はっきりとした声で、自然に話し続けてください。";
 
     const countdownTimer = setInterval(() => {
       secondsLeft -= 1;
+      const elapsedRatio = (totalSeconds - secondsLeft) / totalSeconds;
+      recordProgress.style.width = `${Math.min(elapsedRatio * 100, 100)}%`;
       if (secondsLeft > 0) {
         recordButtonLabel.textContent = `録音中...（残り${secondsLeft}秒）`;
       } else {

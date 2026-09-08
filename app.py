@@ -398,6 +398,7 @@ def process():
 
     return jsonify({
         "id": history_entry["id"],
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
         "original_text": text,
         "translated_text": translated,
         "original_audio_url": original_audio_url,
