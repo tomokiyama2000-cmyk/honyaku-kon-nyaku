@@ -224,9 +224,9 @@ def clone_voice_from_sample(user_id, voice_sample_path):
     return voice_id
 
 
-def speak_with_cloned_voice(text, voice_id, filepath, speed=None):
+def speak_with_cloned_voice(text, voice_id, filepath, speed=None, language_code=None):
     """声のクローンプロバイダーを使って、テキストを読み上げた音声ファイルを作る"""
-    _voice_provider.speak(text, voice_id, filepath, speed=speed)
+    _voice_provider.speak(text, voice_id, filepath, speed=speed, language_code=language_code)
 
 
 @app.route("/")
@@ -365,8 +365,9 @@ def process():
 
         try:
             if use_clone_for_original:
-                # 原文は速度を指定せず、最も自然な音質を優先する
-                speak_with_cloned_voice(text, voice_id, original_filepath)
+                # 原文は、発音精度を上げるため言語を明示的に指定する（速度は指定せず自然な音質を優先）
+                source_lookup_code = source_lang_info["translate_code"].split("-")[0].lower()
+                speak_with_cloned_voice(text, voice_id, original_filepath, language_code=source_lookup_code)
             else:
                 asyncio.run(_speak_to_file(text, source_lang_info["voice"], original_filepath))
             original_audio_url = f"/static/generated_audio/{original_filename}"

@@ -17,6 +17,7 @@ class ElevenLabsVoiceProvider:
     """ElevenLabs公式APIを使った、声のクローン・音声合成プロバイダー"""
 
     MODEL_ID = "eleven_multilingual_v2"  # 29以上の言語に対応する多言語モデル
+    ACCURATE_MODEL_ID = "eleven_turbo_v2_5"  # 発音の言語を明示的に指定できるモデル
 
     def __init__(self, api_key):
         from elevenlabs.client import ElevenLabs
@@ -43,9 +44,13 @@ class ElevenLabsVoiceProvider:
             )
         return response.voice_id
 
-    def speak(self, text, voice_id, filepath, speed=None):
+    def speak(self, text, voice_id, filepath, speed=None, language_code=None):
         """
         指定した声のクローン（voice_id）でテキストを読み上げ、音声ファイルとして保存する。
+
+        language_code を指定した場合、発音の精度を上げるために、通常の多言語モデルではなく
+        「eleven_turbo_v2_5」という、言語を明示的に指定できる別のモデルを使う
+        （多言語モデルは自動で言語を判定するため、まれに発音がずれることがあるため）。
         speed を指定しない場合、ElevenLabs側の速度調整を一切行わない
         （speedパラメータを渡すこと自体が、音質にわずかな影響を与えることがあるため、
         指定が無い場合は省略して、最も自然な音質を優先する）。
@@ -61,13 +66,23 @@ class ElevenLabsVoiceProvider:
         if speed is not None:
             settings_kwargs["speed"] = speed
 
-        audio_chunks = self._client.text_to_speech.convert(
-            voice_id=voice_id,
-            text=text,
-            model_id=self.MODEL_ID,
-            output_format="mp3_44100_128",
-            voice_settings=VoiceSettings(**settings_kwargs),
-        )
+        convert_kwargs = {
+            "voice_id": voice_id,
+            "text": text,
+            "output_format": "mp3_44100_128",
+            "voice_settings": VoiceSettings(**settings_kwargs),
+        }
+
+        if language_code:
+            # 言語を明示的に指定できるモデルに切り替え、発音精度を上げる
+            convert_kwargs["model_id"] = self.ACCURATE_MODEL_ID
+            convert_kwargs["language_code"] = language_code
+            # 日本語の発音をより正確にするための正規化（他の言語には影響しない）
+            convert_kwargs["apply_language_text_normalization"] = True
+        else:
+            convert_kwargs["model_id"] = self.MODEL_ID
+
+        audio_chunks = self._client.text_to_speech.convert(**convert_kwargs)
         with open(filepath, "wb") as f:
             for chunk in audio_chunks:
                 f.write(chunk)
