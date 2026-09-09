@@ -39,9 +39,15 @@ import edge_tts
 import db
 from providers.translation import get_translation_provider
 from providers.voice import get_voice_provider
+from providers.speech import get_speech_provider
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "voicebridge-local-dev-secret")
+
+# 翻訳・声のクローン・（自動言語判別の）音声認識の実際の処理は、それぞれのプロバイダーに任せる。
+_translation_provider = get_translation_provider()
+_voice_provider = get_voice_provider()
+_speech_provider = get_speech_provider()  # 未設定の場合は None（ブラウザの音声認識のみを使う）
 
 # アップロードできるファイルの最大サイズ（10MB）。
 # 声の録音（15秒程度）は数百KB〜数MB程度で収まるため、これで十分な余裕がある。
@@ -51,11 +57,6 @@ app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 # セッションクッキーのセキュリティ設定
 app.config["SESSION_COOKIE_HTTPONLY"] = True  # JavaScriptからクッキーを読めないようにする
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # 他サイトからの不正なリクエストを受けにくくする
-
-# 翻訳・声のクローンの実際の処理は、それぞれのプロバイダーに任せる。
-# どのサービスを使うかは providers/translation.py, providers/voice.py 側で決まる。
-_translation_provider = get_translation_provider()
-_voice_provider = get_voice_provider()
 
 db.init_db()
 
@@ -244,7 +245,42 @@ def index():
         language_table=LANGUAGE_TABLE,
         has_voice_sample=has_voice_sample,
         username=session.get("username"),
+        auto_detect_available=_speech_provider is not None,
     )
+
+
+@app.route("/api/recognize-audio", methods=["POST"])
+def recognize_audio():
+    """
+    録音した音声から、2つの候補言語のどちらで話されたかを自動判別しながら文字起こしする。
+    （Google Cloud Speech-to-Textなど、対応するプロバイダーが設定されている場合のみ使える）
+    """
+    if _speech_provider is None:
+        return jsonify({"error": "自動言語判別のための音声認識サービスが設定されていません"}), 500
+
+    if "audio" not in request.files:
+        return jsonify({"error": "音声データが送られてきませんでした"}), 400
+
+    language_codes_raw = request.form.get("language_codes", "")
+    language_codes = [code.strip() for code in language_codes_raw.split(",") if code.strip()]
+    if len(language_codes) < 2:
+        return jsonify({"error": "2つの候補言語を指定してください"}), 400
+
+    temp_path = os.path.join(AUDIO_DIR, f"_tmp_recognize_{uuid.uuid4().hex}.webm")
+    request.files["audio"].save(temp_path)
+
+    try:
+        text, detected_language_code = _speech_provider.recognize(temp_path, language_codes)
+    except Exception as e:
+        return jsonify({"error": f"音声認識に失敗しました: {e}"}), 500
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+    if not text:
+        return jsonify({"error": "音声を認識できませんでした。もう一度お試しください。"}), 200
+
+    return jsonify({"text": text, "detected_language_code": detected_language_code})
 
 
 @app.route("/api/save-voice-sample", methods=["POST"])

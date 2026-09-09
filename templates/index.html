@@ -84,6 +84,14 @@
     <span>🔁 会話モード（読み上げ後、自動で言語を入れ替えて聞き取りを再開する）</span>
   </label>
 
+  <label class="clone-toggle">
+    <input type="checkbox" id="autoDetectCheckbox" {{ "disabled" if not auto_detect_available }}>
+    <span>🌐 自動言語判別モード（話す言語・翻訳する言語のどちらが話されたか自動で判別する）</span>
+  </label>
+  {% if not auto_detect_available %}
+    <p class="feature-unavailable-note">※ このモードを使うには、サーバー側で音声認識APIの設定が必要です</p>
+  {% endif %}
+
   <section class="stage">
     <div class="waveform" id="waveform" aria-hidden="true">
       <span></span><span></span><span></span><span></span><span></span><span></span><span></span>

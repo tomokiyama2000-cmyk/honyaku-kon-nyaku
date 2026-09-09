@@ -13,6 +13,7 @@ const player = document.getElementById("player");
 const useCloneCheckbox = document.getElementById("useCloneCheckbox");
 const manualModeCheckbox = document.getElementById("manualModeCheckbox");
 const conversationModeCheckbox = document.getElementById("conversationModeCheckbox");
+const autoDetectCheckbox = document.getElementById("autoDetectCheckbox");
 const recordSampleButton = document.getElementById("recordSampleButton");
 const recordButtonLabel = document.getElementById("recordButtonLabel");
 const recordProgress = document.getElementById("recordProgress");
@@ -39,6 +40,12 @@ if (!SpeechRecognition) {
 let isListening = false;
 let accumulatedText = "";
 
+// 自動言語判別モード用（Web Speech APIは「発話の終わり」検知だけに使い、
+// 実際の文字起こしはGoogle Cloud Speech-to-Textに任せる）
+let detectionMediaRecorder = null;
+let detectionChunks = [];
+let detectionStream = null;
+
 function localeForLanguageName(name) {
   // サーバーから埋め込まれた対応言語表を使って、選ばれた言語名から
   // ブラウザの音声認識用ロケール（例: "ja-JP"）を調べる
@@ -48,6 +55,11 @@ function localeForLanguageName(name) {
 
 function startListening() {
   if (!recognition || isListening) return;
+
+  if (autoDetectCheckbox.checked) {
+    startListeningWithAutoDetect();
+    return;
+  }
 
   const manualMode = manualModeCheckbox.checked;
   // 手動モード：話の途中で無音になっても自動終了しない（continuous: true）
@@ -67,6 +79,90 @@ function startListening() {
   recognition.start();
 }
 
+async function startListeningWithAutoDetect() {
+  // 「話す言語」「翻訳する言語」の2つを、判別の候補として扱う
+  const codeA = localeForLanguageName(sourceLanguageSelect.value);
+  const codeB = localeForLanguageName(targetLanguageSelect.value);
+
+  try {
+    detectionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    showError("マイクを使用できませんでした。マイクの使用許可を確認してください。");
+    return;
+  }
+
+  detectionChunks = [];
+  detectionMediaRecorder = new MediaRecorder(detectionStream);
+  detectionMediaRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0) detectionChunks.push(event.data);
+  };
+  detectionMediaRecorder.onstop = async () => {
+    detectionStream.getTracks().forEach((track) => track.stop());
+    await sendAudioForDetection(new Blob(detectionChunks, { type: "audio/webm" }), [codeA, codeB]);
+  };
+  detectionMediaRecorder.start();
+
+  // Web Speech API は「発話が終わったタイミング」の検出だけに使い、
+  // その認識結果（テキスト）は使わない（言語判別の精度が低いため）
+  const manualMode = manualModeCheckbox.checked;
+  recognition.continuous = manualMode;
+  recognition.interimResults = false;
+  recognition.lang = codeA;
+
+  isListening = true;
+  micButton.classList.add("listening");
+  waveform.classList.add("active");
+  statusText.textContent = manualMode
+    ? "聞いています...（もう一度マイクボタンを押すと終了します）"
+    : "聞いています...（話す言語は自動で判別します）";
+
+  recognition.start();
+}
+
+async function sendAudioForDetection(audioBlob, languageCodes) {
+  statusText.textContent = "言語を判別しています...";
+  const formData = new FormData();
+  formData.append("audio", audioBlob, "speech.webm");
+  formData.append("language_codes", languageCodes.join(","));
+
+  try {
+    const response = await fetch("/api/recognize-audio", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await response.json();
+
+    if (!response.ok || data.error) {
+      showError(data.error || "音声の判別に失敗しました");
+      statusText.textContent = "マイクのボタンを押して話しかけてください";
+      return;
+    }
+    if (!data.text) {
+      statusText.textContent = "マイクのボタンを押して話しかけてください";
+      return;
+    }
+
+    // 判別された言語が「話す言語」「翻訳する言語」のどちらに近いかを調べ、
+    // 判別された方を実際の話す言語として、翻訳先を自動的に決める
+    const detectedPrefix = (data.detected_language_code || "").split("-")[0].toLowerCase();
+    const sourceCode = localeForLanguageName(sourceLanguageSelect.value).split("-")[0].toLowerCase();
+
+    let actualSource = sourceLanguageSelect.value;
+    let actualTarget = targetLanguageSelect.value;
+    if (detectedPrefix && detectedPrefix !== sourceCode) {
+      // 判別された言語が「翻訳する言語」側だった場合は、向きを入れ替える
+      actualSource = targetLanguageSelect.value;
+      actualTarget = sourceLanguageSelect.value;
+    }
+
+    statusText.textContent = `認識結果: ${data.text}`;
+    await sendToServer(data.text, actualSource, actualTarget);
+  } catch (err) {
+    showError("サーバーとの通信に失敗しました。");
+    statusText.textContent = "マイクのボタンを押して話しかけてください";
+  }
+}
+
 function stopListeningUI() {
   isListening = false;
   micButton.classList.remove("listening");
@@ -75,6 +171,8 @@ function stopListeningUI() {
 
 if (recognition) {
   recognition.onresult = (event) => {
+    if (autoDetectCheckbox.checked) return; // 自動判別モードでは、この結果は使わない
+
     let interim = "";
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i];
@@ -88,12 +186,23 @@ if (recognition) {
   };
 
   recognition.onerror = (event) => {
-    statusText.textContent = `音声認識でエラーが発生しました（${event.error}）。もう一度お試しください。`;
+    if (!autoDetectCheckbox.checked) {
+      statusText.textContent = `音声認識でエラーが発生しました（${event.error}）。もう一度お試しください。`;
+    }
     stopListeningUI();
   };
 
   recognition.onend = async () => {
     stopListeningUI();
+
+    if (autoDetectCheckbox.checked) {
+      // 自動判別モードでは、録音の停止（→サーバーへの送信）はMediaRecorder側の処理に任せる
+      if (detectionMediaRecorder && detectionMediaRecorder.state !== "inactive") {
+        detectionMediaRecorder.stop();
+      }
+      return;
+    }
+
     const finalText = accumulatedText.trim();
     accumulatedText = "";
     if (finalText) {
@@ -104,7 +213,10 @@ if (recognition) {
   };
 }
 
-async function sendToServer(text) {
+async function sendToServer(text, sourceLanguageOverride, targetLanguageOverride) {
+  const sourceLanguage = sourceLanguageOverride || sourceLanguageSelect.value;
+  const targetLanguage = targetLanguageOverride || targetLanguageSelect.value;
+
   statusText.textContent = "翻訳・音声生成中...";
   micButton.disabled = true; // 処理中は二重送信を防ぐため、マイクボタンを一時的に無効化する
   micButton.classList.add("processing");
@@ -115,8 +227,8 @@ async function sendToServer(text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         text: text,
-        source_language: sourceLanguageSelect.value,
-        target_language: targetLanguageSelect.value,
+        source_language: sourceLanguage,
+        target_language: targetLanguage,
         use_clone: useCloneCheckbox.checked,
       }),
     });
@@ -150,11 +262,12 @@ async function sendToServer(text) {
 
     statusText.textContent = "マイクのボタンを押して話しかけてください";
 
-    // 会話モード：読み上げが終わったら、自動的に話す言語・翻訳する言語を入れ替えて、
-    // 相手の返事を聞き取れるように、聞き取りを再開する
+    // 会話モード：読み上げが終わったら、聞き取りを再開する。
+    // 自動言語判別モードが有効な場合は、次にどちらの言語が話されても自動で判別されるため、
+    // 言語の入れ替え（スワップ）は行わない。
     player.addEventListener("ended", () => {
       if (!conversationModeCheckbox.checked) return;
-      swapLanguages();
+      if (!autoDetectCheckbox.checked) swapLanguages();
       statusText.textContent = "会話モード：相手の返事を聞いています...";
       setTimeout(() => {
         if (!isListening) startListening();

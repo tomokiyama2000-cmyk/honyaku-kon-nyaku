@@ -538,6 +538,13 @@ body {
 
 .clone-toggle input:disabled + span { opacity: 0.5; }
 
+.feature-unavailable-note {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: -8px 0 0;
+}
+
 /* ---- Copy button ---- */
 .copy-button {
   flex-shrink: 0;
