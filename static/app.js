@@ -22,6 +22,17 @@ const voiceSampleStatus = document.getElementById("voiceSampleStatus");
 const textInputForm = document.getElementById("textInputForm");
 const textInput = document.getElementById("textInput");
 const clearHistoryButton = document.getElementById("clearHistoryButton");
+const themeToggleButton = document.getElementById("themeToggleButton");
+const themeIconSun = document.getElementById("themeIconSun");
+const themeIconMoon = document.getElementById("themeIconMoon");
+const helpButton = document.getElementById("helpButton");
+const quickPairs = document.getElementById("quickPairs");
+const favoritesRow = document.getElementById("favoritesRow");
+const tutorialOverlay = document.getElementById("tutorialOverlay");
+const tutorialSteps = document.getElementById("tutorialSteps");
+const tutorialDots = document.getElementById("tutorialDots");
+const tutorialNext = document.getElementById("tutorialNext");
+const tutorialSkip = document.getElementById("tutorialSkip");
 
 let hasVoiceSample = recordSampleButton.classList.contains("record-button--subtle");
 
@@ -367,6 +378,27 @@ function makeCopyButton(text) {
   return button;
 }
 
+function makeFavoriteButton(text) {
+  const button = document.createElement("button");
+  button.className = "favorite-button";
+  button.type = "button";
+  button.setAttribute("aria-label", "よく使うフレーズに追加する");
+  button.innerHTML = `
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  `;
+  button.addEventListener("click", async () => {
+    await addCurrentTextToFavorites(text);
+    button.innerHTML = `
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    `;
+  });
+  return button;
+}
+
 function addToTranscript(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId, timestamp) {
   const tag = voiceCloned
     ? '<span class="voice-tag voice-tag--cloned">あなたの声</span>'
@@ -387,6 +419,7 @@ function addToTranscript(original, translated, originalAudioUrl, translatedAudio
   `;
 
   pair.querySelector(".bubble-row--source").appendChild(makePlayButton(originalAudioUrl));
+  pair.querySelector(".bubble-row--source").appendChild(makeFavoriteButton(original));
 
   const translatedRow = pair.querySelector(".bubble-row--translated");
   translatedRow.appendChild(makeCopyButton(translated));
@@ -620,4 +653,253 @@ async function uploadVoiceSample() {
   } catch (err) {
     recordStatusText.textContent = "サーバーとの通信に失敗しました。";
   }
+}
+
+// ============================================================
+// ダークモード
+// ============================================================
+const THEME_STORAGE_KEY = "voicebridge_theme";
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  themeIconSun.hidden = theme === "dark";
+  themeIconMoon.hidden = theme !== "dark";
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  applyTheme(saved || (prefersDark ? "dark" : "light"));
+}
+
+themeToggleButton.addEventListener("click", () => {
+  const current = document.documentElement.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+  applyTheme(next);
+  localStorage.setItem(THEME_STORAGE_KEY, next);
+});
+
+initTheme();
+
+// ============================================================
+// 言語ペアのクイック切り替え（よく使う組み合わせをブラウザに保存）
+// ============================================================
+const QUICK_PAIRS_STORAGE_KEY = "voicebridge_quick_pairs";
+const MAX_QUICK_PAIRS = 6;
+
+function getQuickPairs() {
+  try {
+    return JSON.parse(localStorage.getItem(QUICK_PAIRS_STORAGE_KEY)) || [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveQuickPairs(pairs) {
+  localStorage.setItem(QUICK_PAIRS_STORAGE_KEY, JSON.stringify(pairs));
+}
+
+function renderQuickPairs() {
+  const pairs = getQuickPairs();
+  quickPairs.innerHTML = "";
+
+  pairs.forEach((pair, index) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "quick-pair-chip";
+    chip.innerHTML = `<span>${escapeHtml(pair.source)} → ${escapeHtml(pair.target)}</span>`;
+
+    chip.addEventListener("click", () => {
+      sourceLanguageSelect.value = pair.source;
+      targetLanguageSelect.value = pair.target;
+    });
+
+    const removeBtn = document.createElement("span");
+    removeBtn.className = "quick-pair-chip__remove";
+    removeBtn.textContent = "×";
+    removeBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const updated = getQuickPairs().filter((_, i) => i !== index);
+      saveQuickPairs(updated);
+      renderQuickPairs();
+    });
+    chip.appendChild(removeBtn);
+
+    quickPairs.appendChild(chip);
+  });
+
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.className = "quick-pair-chip quick-pair-chip--add";
+  addButton.textContent = "+ 現在の組み合わせを保存";
+  addButton.addEventListener("click", () => {
+    const current = getQuickPairs();
+    const source = sourceLanguageSelect.value;
+    const target = targetLanguageSelect.value;
+    if (current.some((p) => p.source === source && p.target === target)) return;
+    if (current.length >= MAX_QUICK_PAIRS) current.shift();
+    current.push({ source, target });
+    saveQuickPairs(current);
+    renderQuickPairs();
+  });
+  quickPairs.appendChild(addButton);
+}
+
+renderQuickPairs();
+
+// ============================================================
+// よく使うフレーズ（お気に入り）
+// ============================================================
+async function loadFavorites() {
+  try {
+    const response = await fetch("/api/favorites");
+    if (!response.ok) return;
+    const favorites = await response.json();
+    renderFavorites(favorites);
+  } catch (err) {
+    // お気に入りが読み込めなくても、アプリ自体は使えるようにする
+  }
+}
+
+function renderFavorites(favorites) {
+  favoritesRow.innerHTML = "";
+  if (!favorites.length) return;
+
+  favorites.forEach((favorite) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "favorite-chip";
+    chip.title = "タップして送信";
+    chip.innerHTML = `<span>${escapeHtml(favorite.text)}</span>`;
+
+    chip.addEventListener("click", async () => {
+      chip.disabled = true;
+      await sendToServer(favorite.text);
+      chip.disabled = false;
+    });
+
+    const removeBtn = document.createElement("span");
+    removeBtn.className = "favorite-chip__remove";
+    removeBtn.textContent = "×";
+    removeBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      try {
+        await fetch(`/api/favorites/${favorite.id}`, { method: "DELETE" });
+        loadFavorites();
+      } catch (err) {
+        // 削除に失敗しても、画面全体は壊さない
+      }
+    });
+    chip.appendChild(removeBtn);
+
+    favoritesRow.appendChild(chip);
+  });
+}
+
+async function addCurrentTextToFavorites(text) {
+  try {
+    await fetch("/api/favorites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: text,
+        source_language: sourceLanguageSelect.value,
+        target_language: targetLanguageSelect.value,
+      }),
+    });
+    loadFavorites();
+  } catch (err) {
+    // 失敗しても画面全体は壊さない
+  }
+}
+
+loadFavorites();
+
+// ============================================================
+// 初回起動時の使い方ガイド（チュートリアル）
+// ============================================================
+const TUTORIAL_STORAGE_KEY = "voicebridge_tutorial_seen";
+
+const TUTORIAL_STEPS = [
+  {
+    title: "ようこそ、ほんやくコンニャクへ",
+    body: "あなたの声で、どんな言語の相手とも話せるようになる、リアルタイム音声翻訳アプリです。",
+  },
+  {
+    title: "① まずは声を録音",
+    body: "上の「声を録音する」ボタンから、あなたの声を60秒ほど録音すると、あなたの声のクローンで読み上げられるようになります（録音しなくても標準の声で使えます）。",
+  },
+  {
+    title: "② 言語を選んでマイクをタップ",
+    body: "話す言語・翻訳する言語を選んだら、中央の大きなマイクボタンを押して話しかけてください。",
+  },
+  {
+    title: "③ 会話オプションを活用",
+    body: "「会話モード」をオンにすると、読み上げ後に自動で聞き取りを再開できます。相手が話す言語が分からない時は「自動言語判別モード」も便利です。",
+  },
+];
+
+function renderTutorial() {
+  tutorialSteps.innerHTML = TUTORIAL_STEPS
+    .map((step, index) => `
+      <div class="tutorial-step" data-step="${index}" ${index === 0 ? "" : "hidden"}>
+        <h3>${escapeHtml(step.title)}</h3>
+        <p>${escapeHtml(step.body)}</p>
+      </div>
+    `)
+    .join("");
+
+  tutorialDots.innerHTML = TUTORIAL_STEPS
+    .map((_, index) => `<span class="tutorial-dot${index === 0 ? " tutorial-dot--active" : ""}" data-dot="${index}"></span>`)
+    .join("");
+}
+
+let tutorialCurrentStep = 0;
+
+function showTutorialStep(index) {
+  tutorialCurrentStep = index;
+  tutorialSteps.querySelectorAll(".tutorial-step").forEach((el) => {
+    el.hidden = Number(el.dataset.step) !== index;
+  });
+  tutorialDots.querySelectorAll(".tutorial-dot").forEach((el) => {
+    el.classList.toggle("tutorial-dot--active", Number(el.dataset.dot) === index);
+  });
+  tutorialNext.textContent = index === TUTORIAL_STEPS.length - 1 ? "はじめる" : "次へ";
+}
+
+function openTutorial() {
+  renderTutorial();
+  showTutorialStep(0);
+  tutorialOverlay.hidden = false;
+}
+
+function closeTutorial() {
+  tutorialOverlay.hidden = true;
+  localStorage.setItem(TUTORIAL_STORAGE_KEY, "1");
+}
+
+tutorialNext.addEventListener("click", () => {
+  if (tutorialCurrentStep < TUTORIAL_STEPS.length - 1) {
+    showTutorialStep(tutorialCurrentStep + 1);
+  } else {
+    closeTutorial();
+  }
+});
+
+tutorialSkip.addEventListener("click", closeTutorial);
+helpButton.addEventListener("click", openTutorial);
+
+if (!localStorage.getItem(TUTORIAL_STORAGE_KEY)) {
+  openTutorial();
+}
+
+// ============================================================
+// PWA（ホーム画面に追加してアプリのように使える機能）
+// ============================================================
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // 登録に失敗しても、通常のWebアプリとしては引き続き使える
+    });
+  });
 }

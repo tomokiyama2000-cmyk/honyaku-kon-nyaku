@@ -73,7 +73,7 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 # ---- アカウント登録・ログイン（利用者ごとにアカウントを持つ） ----
 @app.before_request
 def require_login():
-    allowed_paths = ("/login", "/register", "/static/")
+    allowed_paths = ("/login", "/register", "/static/", "/sw.js")
     if request.path.startswith(allowed_paths):
         return
     if not session.get("user_id"):
@@ -467,6 +467,37 @@ def clear_history():
     return jsonify({"message": "履歴を削除しました"})
 
 
+@app.route("/api/favorites", methods=["GET"])
+def get_favorites():
+    """ログイン中の利用者のお気に入りフレーズを返す"""
+    return jsonify(db.get_favorites_for_user(session["user_id"]))
+
+
+@app.route("/api/favorites", methods=["POST"])
+def add_favorite_route():
+    """よく使うフレーズをお気に入りに追加する"""
+    data = request.get_json(force=True, silent=True) or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "テキストが空です"}), 400
+    if len(text) > 500:
+        return jsonify({"error": "お気に入りに登録できるのは500文字までです"}), 400
+
+    favorite_id = db.add_favorite(
+        session["user_id"], text, data.get("source_language"), data.get("target_language")
+    )
+    return jsonify({"id": favorite_id, "text": text})
+
+
+@app.route("/api/favorites/<favorite_id>", methods=["DELETE"])
+def delete_favorite_route(favorite_id):
+    """指定したお気に入りフレーズを削除する"""
+    deleted = db.delete_favorite(session["user_id"], favorite_id)
+    if not deleted:
+        return jsonify({"error": "該当するお気に入りが見つかりませんでした"}), 404
+    return jsonify({"message": "削除しました"})
+
+
 def _delete_audio_files(audio_urls):
     """
     履歴の削除に伴って、不要になった音声ファイルをディスクから削除する。
@@ -490,6 +521,16 @@ async def _speak_to_file(text, voice, filepath):
 @app.route("/static/generated_audio/<path:filename>")
 def serve_audio(filename):
     return send_from_directory(AUDIO_DIR, filename)
+
+
+@app.route("/sw.js")
+def service_worker():
+    """
+    PWA（ホーム画面に追加できるアプリ）用のサービスワーカーを、サイト全体に
+    適用される範囲（スコープ）で配信する。/static/ 以下から配信すると、
+    その範囲にしか効かなくなってしまうため、ルート直下のパスで配信する。
+    """
+    return send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
 
 
 @app.errorhandler(500)

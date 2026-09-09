@@ -72,6 +72,17 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS favorites (
+                id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                source_language TEXT,
+                target_language TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        """)
 
 
 # ---- ユーザー関連 ----
@@ -228,3 +239,46 @@ def _history_row_to_dict(row):
         "translated_audio_url": row["translated_audio_url"],
         "voice_cloned": bool(row["voice_cloned"]),
     }
+
+
+# ---- お気に入りフレーズ関連（利用者ごとに分離） ----
+
+def add_favorite(user_id, text, source_language, target_language):
+    """よく使うフレーズをお気に入りとして1件追加する"""
+    favorite_id = uuid.uuid4().hex
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO favorites (id, user_id, text, source_language, target_language, created_at)
+            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            """,
+            (favorite_id, user_id, text, source_language, target_language),
+        )
+    return favorite_id
+
+
+def get_favorites_for_user(user_id):
+    """指定した利用者のお気に入りフレーズを、新しい順に取得する"""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM favorites WHERE user_id = ? ORDER BY created_at DESC",
+            (user_id,),
+        ).fetchall()
+    return [
+        {
+            "id": row["id"],
+            "text": row["text"],
+            "source_language": row["source_language"],
+            "target_language": row["target_language"],
+        }
+        for row in rows
+    ]
+
+
+def delete_favorite(user_id, favorite_id):
+    """指定した利用者の、指定した1件のお気に入りを削除する"""
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM favorites WHERE id = ? AND user_id = ?", (favorite_id, user_id)
+        )
+        return cursor.rowcount > 0

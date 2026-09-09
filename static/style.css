@@ -760,7 +760,226 @@ button {
   text-decoration: underline;
 }
 
-/* ---- Responsive ---- */
+/* ============================================================
+   ダークモード（[data-theme="dark"] が html要素に付与されると切り替わる）
+   ============================================================ */
+[data-theme="dark"] {
+  --bg: #10181C;
+  --panel: #17232A;
+  --panel-raised: #1E2E36;
+  --accent: #E0954A;
+  --accent-strong: #B36A1F;
+  --accent-soft: #F2C78C;
+  --teal: #4FD1C5;
+  --text: #EDF2F4;
+  --text-muted: #93A6AD;
+  --border: rgba(237, 242, 244, 0.12);
+  --danger: #E8735C;
+}
+
+[data-theme="dark"] body {
+  background: radial-gradient(ellipse at top, #1C2A31 0%, var(--bg) 65%);
+}
+
+[data-theme="dark"] .mic-button,
+[data-theme="dark"] .login-form button {
+  color: #1A1206;
+}
+
+/* ============================================================
+   Header tools (theme toggle / help)
+   ============================================================ */
+.header-tools {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.icon-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icon-button:hover { background: var(--accent); color: #FFFFFF; }
+
+/* ============================================================
+   Quick language pairs
+   ============================================================ */
+.quick-pairs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.quick-pair-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+  color: var(--text);
+  border-radius: var(--radius-full);
+  padding: 5px var(--space-3);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.quick-pair-chip:hover { border-color: var(--accent); }
+
+.quick-pair-chip--add {
+  color: var(--text-muted);
+  background: none;
+  border-style: dashed;
+}
+
+.quick-pair-chip__remove {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.quick-pair-chip__remove:hover { color: var(--danger); }
+
+/* ============================================================
+   Favorite phrases
+   ============================================================ */
+.favorites-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 380px;
+}
+
+.favorite-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(201, 113, 31, 0.3);
+  background: rgba(201, 113, 31, 0.08);
+  color: var(--text);
+  border-radius: var(--radius-full);
+  padding: 5px var(--space-3);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.favorite-chip:hover { border-color: var(--accent); }
+.favorite-chip:disabled { opacity: 0.5; cursor: default; }
+
+.favorite-chip__remove {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.favorite-chip__remove:hover { color: var(--danger); }
+
+.favorite-button {
+  flex-shrink: 0;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+  color: var(--accent-strong);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.favorite-button:hover { background: var(--accent); color: #FFFFFF; }
+
+/* ============================================================
+   Tutorial overlay
+   ============================================================ */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 20, 24, 0.55);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  z-index: 100;
+}
+
+.tutorial-card {
+  background: var(--panel);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  max-width: 360px;
+  width: 100%;
+  box-shadow: var(--shadow-md);
+}
+
+.tutorial-step h3 {
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  font-size: 1.15rem;
+  margin: 0 0 var(--space-3);
+  color: var(--text);
+}
+
+.tutorial-step p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.tutorial-card__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-6);
+}
+
+.tutorial-skip {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.tutorial-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.tutorial-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.tutorial-dot--active { background: var(--accent); }
+
+.tutorial-next {
+  background: linear-gradient(155deg, var(--accent) 0%, var(--accent-strong) 100%);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-5);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
 @media (max-width: 480px) {
   .app__title { font-size: 1.5rem; }
   .gadget-badge { padding: var(--space-3) var(--space-5); }
