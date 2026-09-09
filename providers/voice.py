@@ -58,9 +58,9 @@ class ElevenLabsVoiceProvider:
         from elevenlabs import VoiceSettings
 
         settings_kwargs = {
-            "stability": 0.5,  # 声の安定性（低いほど表現豊かだが不安定になりやすい）
+            "stability": 0.4,  # 声の安定性（少し下げて、抑揚のある明るい話し方にする）
             "similarity_boost": 0.85,  # 元の声にどれだけ似せるか（高いほど本人の声に近づく）
-            "style": 0.0,
+            "style": 0.35,  # 表現の豊かさ（上げることで、テンション高く聞こえるようにする）
             "use_speaker_boost": True,  # 声の明瞭さ・類似度を高める補正
         }
         if speed is not None:

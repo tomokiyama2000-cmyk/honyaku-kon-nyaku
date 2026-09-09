@@ -23,6 +23,12 @@ const textInputForm = document.getElementById("textInputForm");
 const textInput = document.getElementById("textInput");
 const clearHistoryButton = document.getElementById("clearHistoryButton");
 
+let hasVoiceSample = recordSampleButton.classList.contains("record-button--subtle");
+
+function resetRecordButtonLabel() {
+  recordButtonLabel.textContent = hasVoiceSample ? "声を録音し直す" : "🎙️ 声を録音する（60秒）";
+}
+
 // ブラウザの音声認識機能を用意する（Chrome系ブラウザで利用可能）
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
@@ -549,7 +555,7 @@ recordSampleButton.addEventListener("click", async () => {
       stream.getTracks().forEach((track) => track.stop());
       isRecording = false;
       recordSampleButton.classList.remove("recording");
-      recordButtonLabel.textContent = "🎙️ 声を録音する（60秒）";
+      resetRecordButtonLabel();
       recordProgress.style.width = "0%";
       await uploadVoiceSample();
       recordSampleButton.disabled = false;
@@ -606,8 +612,11 @@ async function uploadVoiceSample() {
 
     recordStatusText.textContent = "声のサンプルを保存しました。";
     voiceSampleStatus.textContent = "登録済み";
-    voiceSampleStatus.classList.add("voice-setup__status--ok");
+    voiceSampleStatus.classList.add("status-pill--ok");
     useCloneCheckbox.disabled = false;
+    hasVoiceSample = true;
+    recordSampleButton.classList.add("record-button--subtle");
+    resetRecordButtonLabel();
   } catch (err) {
     recordStatusText.textContent = "サーバーとの通信に失敗しました。";
   }

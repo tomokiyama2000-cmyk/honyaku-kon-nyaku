@@ -35,10 +35,18 @@
         {{ "登録済み" if has_voice_sample else "未登録" }}
       </span>
     </div>
-    <button id="recordSampleButton" class="record-button">
-      <span class="record-button__progress" id="recordProgress"></span>
-      <span class="record-button__label" id="recordButtonLabel">🎙️ 声を録音する（60秒）</span>
-    </button>
+
+    {% if has_voice_sample %}
+      <button id="recordSampleButton" class="record-button record-button--subtle">
+        <span class="record-button__progress" id="recordProgress"></span>
+        <span class="record-button__label" id="recordButtonLabel">声を録音し直す</span>
+      </button>
+    {% else %}
+      <button id="recordSampleButton" class="record-button">
+        <span class="record-button__progress" id="recordProgress"></span>
+        <span class="record-button__label" id="recordButtonLabel">🎙️ 声を録音する（60秒）</span>
+      </button>
+    {% endif %}
     <p id="recordStatusText" class="record-status-text"></p>
 
     <div class="setup-card__divider"></div>
@@ -71,17 +79,13 @@
     </div>
   </section>
 
-  <details class="advanced-settings">
-    <summary>
-      <span>詳細設定</span>
-      <svg class="advanced-settings__chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
-    </summary>
+  <section class="options-card">
+    <h2 class="options-card__title">会話オプション</h2>
 
-    <div class="advanced-settings__body">
+    <div class="options-card__body">
       <label class="setting-toggle">
         <input type="checkbox" id="useCloneCheckbox" {{ "disabled" if not has_voice_sample }}>
+        <span class="setting-toggle__switch"></span>
         <span class="setting-toggle__text">
           <strong>自分のクローン音声で読み上げる</strong>
           <small>少し時間がかかります{{ "（声を録音すると使えます）" if not has_voice_sample }}</small>
@@ -90,6 +94,7 @@
 
       <label class="setting-toggle">
         <input type="checkbox" id="manualModeCheckbox">
+        <span class="setting-toggle__switch"></span>
         <span class="setting-toggle__text">
           <strong>自分で録音の開始・終了を操作する</strong>
           <small>話が途中で切れてしまう場合はこちら</small>
@@ -98,6 +103,7 @@
 
       <label class="setting-toggle">
         <input type="checkbox" id="conversationModeCheckbox">
+        <span class="setting-toggle__switch"></span>
         <span class="setting-toggle__text">
           <strong>会話モード</strong>
           <small>読み上げ後、自動で言語を入れ替えて聞き取りを再開する</small>
@@ -106,13 +112,14 @@
 
       <label class="setting-toggle">
         <input type="checkbox" id="autoDetectCheckbox" {{ "disabled" if not auto_detect_available }}>
+        <span class="setting-toggle__switch"></span>
         <span class="setting-toggle__text">
           <strong>自動言語判別モード</strong>
           <small>{{ "話す言語・翻訳する言語のどちらが話されたか自動で判別する" if auto_detect_available else "利用するにはサーバー側で音声認識APIの設定が必要です" }}</small>
         </span>
       </label>
     </div>
-  </details>
+  </section>
 
   <section class="stage">
     <div class="waveform" id="waveform" aria-hidden="true">
