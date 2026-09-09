@@ -911,10 +911,16 @@ button {
   position: fixed;
   inset: 0;
   background: rgba(14, 20, 24, 0.55);
-  display: grid;
+  display: none;
   place-items: center;
   padding: var(--space-4);
   z-index: 100;
+}
+
+/* [hidden]属性だけに頼ると、display指定のあるCSSルールに上書きされてしまうことがあるため、
+   表示する時は明示的にこのクラスを付け外しする方式にしている */
+.tutorial-overlay.is-visible {
+  display: grid;
 }
 
 .tutorial-card {

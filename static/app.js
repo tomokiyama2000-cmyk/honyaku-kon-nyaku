@@ -870,11 +870,11 @@ function showTutorialStep(index) {
 function openTutorial() {
   renderTutorial();
   showTutorialStep(0);
-  tutorialOverlay.hidden = false;
+  tutorialOverlay.classList.add("is-visible");
 }
 
 function closeTutorial() {
-  tutorialOverlay.hidden = true;
+  tutorialOverlay.classList.remove("is-visible");
   localStorage.setItem(TUTORIAL_STORAGE_KEY, "1");
 }
 
