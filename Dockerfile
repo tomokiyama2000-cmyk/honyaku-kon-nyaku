@@ -23,4 +23,6 @@ ENV PORT=5000
 EXPOSE 5000
 
 # 本番用のサーバー（gunicorn）でアプリを起動する。
-CMD gunicorn --workers 1 --timeout 60 --bind 0.0.0.0:$PORT app:app
+# 1回のリクエストで翻訳・声のクローン・音声認識と複数の外部APIを順番に呼ぶことがあるため、
+# タイムアウトを少し余裕を持たせている。
+CMD gunicorn --workers 1 --timeout 90 --bind 0.0.0.0:$PORT app:app
