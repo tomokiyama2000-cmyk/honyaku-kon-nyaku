@@ -12,6 +12,7 @@ const transcript = document.getElementById("transcript");
 const player = document.getElementById("player");
 const useCloneCheckbox = document.getElementById("useCloneCheckbox");
 const manualModeCheckbox = document.getElementById("manualModeCheckbox");
+const conversationModeCheckbox = document.getElementById("conversationModeCheckbox");
 const recordSampleButton = document.getElementById("recordSampleButton");
 const recordButtonLabel = document.getElementById("recordButtonLabel");
 const recordProgress = document.getElementById("recordProgress");
@@ -148,6 +149,17 @@ async function sendToServer(text) {
     }
 
     statusText.textContent = "マイクのボタンを押して話しかけてください";
+
+    // 会話モード：読み上げが終わったら、自動的に話す言語・翻訳する言語を入れ替えて、
+    // 相手の返事を聞き取れるように、聞き取りを再開する
+    player.addEventListener("ended", () => {
+      if (!conversationModeCheckbox.checked) return;
+      swapLanguages();
+      statusText.textContent = "会話モード：相手の返事を聞いています...";
+      setTimeout(() => {
+        if (!isListening) startListening();
+      }, 300);
+    }, { once: true });
   } catch (err) {
     showError("サーバーとの通信に失敗しました。サーバーが起動しているか確認してください。");
   } finally {
@@ -343,11 +355,13 @@ micButton.addEventListener("click", () => {
   }
 });
 
-swapButton.addEventListener("click", () => {
+function swapLanguages() {
   const temp = sourceLanguageSelect.value;
   sourceLanguageSelect.value = targetLanguageSelect.value;
   targetLanguageSelect.value = temp;
-});
+}
+
+swapButton.addEventListener("click", swapLanguages);
 
 // ---- 会話履歴の読み込み・削除 ----
 async function loadHistory() {
