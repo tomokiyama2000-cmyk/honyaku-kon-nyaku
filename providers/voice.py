@@ -11,16 +11,47 @@ app.py（アプリ本体）は、ここで定義した共通のインターフ�
 """
 
 import os
+import subprocess
 
 # 声のトーン（話し方の雰囲気）のプリセット。
 # stability: 声の安定性（低いほど抑揚が豊かで表現力が出る）
 # style: 表現の強さ（高いほど感情がこもって聞こえる）
+# speed: 読み上げ速度（1.0が標準）
+# pitch_factor: 声の高さの倍率（1.0が変化なし。1.0より大きいと高く、小さいと低くなる）
 VOICE_TONE_PRESETS = {
-    "standard": {"stability": 0.4, "style": 0.35},
-    "friendly": {"stability": 0.28, "style": 0.55},  # 明るい・テンション高め（友達との会話向け）
-    "business": {"stability": 0.65, "style": 0.05},  # 落ち着いた・まじめ（ビジネスシーン向け）
+    "standard": {"stability": 0.4, "style": 0.35, "speed": None, "pitch_factor": None},
+    "friendly": {"stability": 0.15, "style": 0.85, "speed": 1.08, "pitch_factor": 1.10},  # 明るい・テンション高め
+    "business": {"stability": 0.80, "style": 0.0, "speed": 0.90, "pitch_factor": 0.90},  # 落ち着いた・まじめ
 }
 DEFAULT_VOICE_TONE = "standard"
+
+
+def _shift_pitch(filepath, pitch_factor):
+    """
+    音声ファイルの再生時間（テンポ）は変えずに、声の高さだけを変える。
+    （asetrateで再生速度ごと変えたあと、atempoで速度だけを元に戻すことで、
+    　結果的に「高さだけ」が変わった音声にする、という定番のffmpegの手法）
+    """
+    temp_path = filepath + ".pitched.mp3"
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y", "-i", filepath,
+                "-af", f"asetrate=44100*{pitch_factor},aresample=44100,atempo={1 / pitch_factor}",
+                temp_path,
+            ],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0 and os.path.exists(temp_path):
+            os.replace(temp_path, filepath)
+    except Exception:
+        pass  # ピッチ変更に失敗しても、元の音声はそのまま使う
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
 
 class ElevenLabsVoiceProvider:
@@ -59,18 +90,18 @@ class ElevenLabsVoiceProvider:
         指定した声のクローン（voice_id）でテキストを読み上げ、音声ファイルとして保存する。
 
         tone には "standard"（標準）, "friendly"（明るい）, "business"（落ち着いた）
-        のいずれかを指定でき、話し方の雰囲気を切り替えられる。
+        のいずれかを指定でき、話し方の雰囲気を切り替えられる
+        （安定性・表現の強さに加えて、話す速さ・声の高さも変えることで、はっきりと違いが分かるようにしている）。
 
+        speed を明示的に指定した場合は、トーンの速度設定より優先される
+        （原文・翻訳文で個別に速度を調整したい場合のため）。
         language_code を指定した場合、発音の精度を上げるために、通常の多言語モデルではなく
-        「eleven_turbo_v2_5」という、言語を明示的に指定できる別のモデルを使う
-        （多言語モデルは自動で言語を判定するため、まれに発音がずれることがあるため）。
-        speed を指定しない場合、ElevenLabs側の速度調整を一切行わない
-        （speedパラメータを渡すこと自体が、音質にわずかな影響を与えることがあるため、
-        指定が無い場合は省略して、最も自然な音質を優先する）。
+        「eleven_turbo_v2_5」という、言語を明示的に指定できる別のモデルを使う。
         """
         from elevenlabs import VoiceSettings
 
         tone_preset = VOICE_TONE_PRESETS.get(tone, VOICE_TONE_PRESETS[DEFAULT_VOICE_TONE])
+        effective_speed = speed if speed is not None else tone_preset["speed"]
 
         settings_kwargs = {
             "stability": tone_preset["stability"],  # 声の安定性（低いほど抑揚が豊かになる）
@@ -78,8 +109,8 @@ class ElevenLabsVoiceProvider:
             "style": tone_preset["style"],  # 表現の強さ（トーンによって明るさ・まじめさを調整する）
             "use_speaker_boost": True,  # 声の明瞭さ・類似度を高める補正
         }
-        if speed is not None:
-            settings_kwargs["speed"] = speed
+        if effective_speed is not None:
+            settings_kwargs["speed"] = effective_speed
 
         convert_kwargs = {
             "voice_id": voice_id,
@@ -101,6 +132,10 @@ class ElevenLabsVoiceProvider:
         with open(filepath, "wb") as f:
             for chunk in audio_chunks:
                 f.write(chunk)
+
+        # トーンに応じて、声の高さも変える（大幅に印象を変えるため）
+        if tone_preset["pitch_factor"] is not None:
+            _shift_pitch(filepath, tone_preset["pitch_factor"])
 
     def delete_voice(self, voice_id):
         """指定した声のクローンを削除する"""

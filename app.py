@@ -519,8 +519,8 @@ def _delete_audio_files(audio_urls):
 # edge-tts（自然な声）向けの、声のトーンごとの話速・ピッチ調整
 EDGE_TTS_TONE_PRESETS = {
     "standard": {"rate": "+0%", "pitch": "+0Hz"},
-    "friendly": {"rate": "+8%", "pitch": "+15Hz"},   # 明るい・テンション高め
-    "business": {"rate": "-5%", "pitch": "-10Hz"},   # 落ち着いた・まじめ
+    "friendly": {"rate": "+18%", "pitch": "+40Hz"},   # 明るい・テンション高め
+    "business": {"rate": "-12%", "pitch": "-30Hz"},   # 落ち着いた・まじめ
 }
 
 
