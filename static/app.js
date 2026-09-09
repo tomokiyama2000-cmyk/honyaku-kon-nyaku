@@ -15,6 +15,7 @@ const manualModeCheckbox = document.getElementById("manualModeCheckbox");
 const conversationModeCheckbox = document.getElementById("conversationModeCheckbox");
 const autoDetectCheckbox = document.getElementById("autoDetectCheckbox");
 const handsFreeCheckbox = document.getElementById("handsFreeCheckbox");
+const toneOptions = document.querySelectorAll(".tone-option");
 const recordSampleButton = document.getElementById("recordSampleButton");
 const recordButtonLabel = document.getElementById("recordButtonLabel");
 const recordProgress = document.getElementById("recordProgress");
@@ -254,6 +255,7 @@ async function sendToServer(text, sourceLanguageOverride, targetLanguageOverride
         source_language: sourceLanguage,
         target_language: targetLanguage,
         use_clone: useCloneCheckbox.checked,
+        voice_tone: currentVoiceTone,
       }),
     });
 
@@ -950,3 +952,25 @@ if (localStorage.getItem(HANDSFREE_STORAGE_KEY) === "1") {
     if (!isListening) startListening();
   }, 800);
 }
+
+// ============================================================
+// 読み上げの声色（トーン）
+// ============================================================
+const VOICE_TONE_STORAGE_KEY = "voicebridge_voice_tone";
+let currentVoiceTone = localStorage.getItem(VOICE_TONE_STORAGE_KEY) || "standard";
+
+function applyVoiceToneUI() {
+  toneOptions.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.tone === currentVoiceTone);
+  });
+}
+
+toneOptions.forEach((button) => {
+  button.addEventListener("click", () => {
+    currentVoiceTone = button.dataset.tone;
+    localStorage.setItem(VOICE_TONE_STORAGE_KEY, currentVoiceTone);
+    applyVoiceToneUI();
+  });
+});
+
+applyVoiceToneUI();

@@ -105,6 +105,15 @@
   <section class="options-card">
     <h2 class="options-card__title">会話オプション</h2>
 
+    <div class="tone-selector">
+      <span class="tone-selector__label">読み上げの声色</span>
+      <div class="tone-selector__options" role="radiogroup" aria-label="読み上げの声色">
+        <button type="button" class="tone-option is-active" data-tone="standard">標準</button>
+        <button type="button" class="tone-option" data-tone="friendly">😄 明るい</button>
+        <button type="button" class="tone-option" data-tone="business">💼 落ち着いた</button>
+      </div>
+    </div>
+
     <div class="options-card__body">
       <label class="setting-toggle">
         <input type="checkbox" id="useCloneCheckbox" {{ "disabled" if not has_voice_sample }}>

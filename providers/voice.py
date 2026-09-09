@@ -12,6 +12,16 @@ app.py（アプリ本体）は、ここで定義した共通のインターフ�
 
 import os
 
+# 声のトーン（話し方の雰囲気）のプリセット。
+# stability: 声の安定性（低いほど抑揚が豊かで表現力が出る）
+# style: 表現の強さ（高いほど感情がこもって聞こえる）
+VOICE_TONE_PRESETS = {
+    "standard": {"stability": 0.4, "style": 0.35},
+    "friendly": {"stability": 0.28, "style": 0.55},  # 明るい・テンション高め（友達との会話向け）
+    "business": {"stability": 0.65, "style": 0.05},  # 落ち着いた・まじめ（ビジネスシーン向け）
+}
+DEFAULT_VOICE_TONE = "standard"
+
 
 class ElevenLabsVoiceProvider:
     """ElevenLabs公式APIを使った、声のクローン・音声合成プロバイダー"""
@@ -44,9 +54,12 @@ class ElevenLabsVoiceProvider:
             )
         return response.voice_id
 
-    def speak(self, text, voice_id, filepath, speed=None, language_code=None):
+    def speak(self, text, voice_id, filepath, speed=None, language_code=None, tone=DEFAULT_VOICE_TONE):
         """
         指定した声のクローン（voice_id）でテキストを読み上げ、音声ファイルとして保存する。
+
+        tone には "standard"（標準）, "friendly"（明るい）, "business"（落ち着いた）
+        のいずれかを指定でき、話し方の雰囲気を切り替えられる。
 
         language_code を指定した場合、発音の精度を上げるために、通常の多言語モデルではなく
         「eleven_turbo_v2_5」という、言語を明示的に指定できる別のモデルを使う
@@ -57,10 +70,12 @@ class ElevenLabsVoiceProvider:
         """
         from elevenlabs import VoiceSettings
 
+        tone_preset = VOICE_TONE_PRESETS.get(tone, VOICE_TONE_PRESETS[DEFAULT_VOICE_TONE])
+
         settings_kwargs = {
-            "stability": 0.4,  # 声の安定性（少し下げて、抑揚のある明るい話し方にする）
+            "stability": tone_preset["stability"],  # 声の安定性（低いほど抑揚が豊かになる）
             "similarity_boost": 0.85,  # 元の声にどれだけ似せるか（高いほど本人の声に近づく）
-            "style": 0.35,  # 表現の豊かさ（上げることで、テンション高く聞こえるようにする）
+            "style": tone_preset["style"],  # 表現の強さ（トーンによって明るさ・まじめさを調整する）
             "use_speaker_boost": True,  # 声の明瞭さ・類似度を高める補正
         }
         if speed is not None:

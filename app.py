@@ -225,9 +225,9 @@ def clone_voice_from_sample(user_id, voice_sample_path):
     return voice_id
 
 
-def speak_with_cloned_voice(text, voice_id, filepath, speed=None, language_code=None):
+def speak_with_cloned_voice(text, voice_id, filepath, speed=None, language_code=None, tone="standard"):
     """声のクローンプロバイダーを使って、テキストを読み上げた音声ファイルを作る"""
-    _voice_provider.speak(text, voice_id, filepath, speed=speed, language_code=language_code)
+    _voice_provider.speak(text, voice_id, filepath, speed=speed, language_code=language_code, tone=tone)
 
 
 @app.route("/")
@@ -345,6 +345,9 @@ def process():
     source_language_name = data.get("source_language")
     target_language_name = data.get("target_language")
     want_clone_voice = bool(data.get("use_clone", False))
+    voice_tone = data.get("voice_tone") or "standard"
+    if voice_tone not in ("standard", "friendly", "business"):
+        voice_tone = "standard"
 
     if not text:
         return jsonify({"error": "テキストが空です"}), 400
@@ -376,16 +379,16 @@ def process():
     try:
         if use_clone:
             # 翻訳文は少しゆっくりめに読み上げる（原文の言語より聞き取りにくいことが多いため）
-            speak_with_cloned_voice(translated, voice_id, filepath, speed=0.85)
+            speak_with_cloned_voice(translated, voice_id, filepath, speed=0.85, tone=voice_tone)
         else:
-            asyncio.run(_speak_to_file(translated, lang_info["voice"], filepath))
+            asyncio.run(_speak_to_file(translated, lang_info["voice"], filepath, tone=voice_tone))
     except Exception as e:
         # 声のクローンで失敗した場合は、自然な声（edge-tts）で再挑戦してみる
         if use_clone:
             try:
                 filename = f"{uuid.uuid4().hex}.mp3"
                 filepath = os.path.join(AUDIO_DIR, filename)
-                asyncio.run(_speak_to_file(translated, lang_info["voice"], filepath))
+                asyncio.run(_speak_to_file(translated, lang_info["voice"], filepath, tone=voice_tone))
                 use_clone = False
             except Exception as e2:
                 return jsonify({"error": f"音声合成に失敗しました: {e2}"}), 500
@@ -403,16 +406,16 @@ def process():
             if use_clone_for_original:
                 # 原文は、発音精度を上げるため言語を明示的に指定する（速度は指定せず自然な音質を優先）
                 source_lookup_code = source_lang_info["translate_code"].split("-")[0].lower()
-                speak_with_cloned_voice(text, voice_id, original_filepath, language_code=source_lookup_code)
+                speak_with_cloned_voice(text, voice_id, original_filepath, language_code=source_lookup_code, tone=voice_tone)
             else:
-                asyncio.run(_speak_to_file(text, source_lang_info["voice"], original_filepath))
+                asyncio.run(_speak_to_file(text, source_lang_info["voice"], original_filepath, tone=voice_tone))
             original_audio_url = f"/static/generated_audio/{original_filename}"
         except Exception:
             # クローンで失敗したら、自然な声で再挑戦してみる
             try:
                 original_filename = f"{uuid.uuid4().hex}.mp3"
                 original_filepath = os.path.join(AUDIO_DIR, original_filename)
-                asyncio.run(_speak_to_file(text, source_lang_info["voice"], original_filepath))
+                asyncio.run(_speak_to_file(text, source_lang_info["voice"], original_filepath, tone=voice_tone))
                 original_audio_url = f"/static/generated_audio/{original_filename}"
             except Exception:
                 original_audio_url = None  # それでも失敗したら、原文の音声は無しで翻訳結果は返す
@@ -513,8 +516,17 @@ def _delete_audio_files(audio_urls):
             pass  # ファイル削除に失敗しても、履歴の削除自体は成功として扱う
 
 
-async def _speak_to_file(text, voice, filepath):
-    communicate = edge_tts.Communicate(text, voice)
+# edge-tts（自然な声）向けの、声のトーンごとの話速・ピッチ調整
+EDGE_TTS_TONE_PRESETS = {
+    "standard": {"rate": "+0%", "pitch": "+0Hz"},
+    "friendly": {"rate": "+8%", "pitch": "+15Hz"},   # 明るい・テンション高め
+    "business": {"rate": "-5%", "pitch": "-10Hz"},   # 落ち着いた・まじめ
+}
+
+
+async def _speak_to_file(text, voice, filepath, tone="standard"):
+    preset = EDGE_TTS_TONE_PRESETS.get(tone, EDGE_TTS_TONE_PRESETS["standard"])
+    communicate = edge_tts.Communicate(text, voice, rate=preset["rate"], pitch=preset["pitch"])
     await communicate.save(filepath)
 
 
