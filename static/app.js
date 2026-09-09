@@ -14,6 +14,7 @@ const useCloneCheckbox = document.getElementById("useCloneCheckbox");
 const manualModeCheckbox = document.getElementById("manualModeCheckbox");
 const conversationModeCheckbox = document.getElementById("conversationModeCheckbox");
 const autoDetectCheckbox = document.getElementById("autoDetectCheckbox");
+const handsFreeCheckbox = document.getElementById("handsFreeCheckbox");
 const recordSampleButton = document.getElementById("recordSampleButton");
 const recordButtonLabel = document.getElementById("recordButtonLabel");
 const recordProgress = document.getElementById("recordProgress");
@@ -224,6 +225,12 @@ if (recognition) {
     accumulatedText = "";
     if (finalText) {
       await sendToServer(finalText);
+    } else if (handsFreeCheckbox.checked) {
+      // ハンズフリーモードでは、何も聞き取れなかった場合も自動的に聞き取りを再開する
+      statusText.textContent = "ハンズフリーモード：聞いています...";
+      setTimeout(() => {
+        if (!isListening) startListening();
+      }, 500);
     } else {
       statusText.textContent = "マイクのボタンを押して話しかけてください";
     }
@@ -274,6 +281,11 @@ async function sendToServer(text, sourceLanguageOverride, targetLanguageOverride
       await player.play();
     } catch (playErr) {
       statusText.textContent = "音声の再生に失敗しました。再生ボタンから再生してください。";
+      if (handsFreeCheckbox.checked) {
+        setTimeout(() => {
+          if (!isListening) startListening();
+        }, 500);
+      }
       return;
     }
 
@@ -283,9 +295,16 @@ async function sendToServer(text, sourceLanguageOverride, targetLanguageOverride
     // 自動言語判別モードが有効な場合は、次にどちらの言語が話されても自動で判別されるため、
     // 言語の入れ替え（スワップ）は行わない。
     player.addEventListener("ended", () => {
-      if (!conversationModeCheckbox.checked) return;
-      if (!autoDetectCheckbox.checked) swapLanguages();
-      statusText.textContent = "会話モード：相手の返事を聞いています...";
+      const conversationOn = conversationModeCheckbox.checked;
+      const handsFreeOn = handsFreeCheckbox.checked;
+      if (!conversationOn && !handsFreeOn) return;
+
+      // 会話モードの時だけ、言語を入れ替える（ハンズフリーモード単独では、同じ方向で聞き取り続ける）
+      if (conversationOn && !autoDetectCheckbox.checked) swapLanguages();
+
+      statusText.textContent = conversationOn
+        ? "会話モード：相手の返事を聞いています..."
+        : "ハンズフリーモード：聞いています...";
       setTimeout(() => {
         if (!isListening) startListening();
       }, 300);
@@ -305,6 +324,14 @@ function showError(message) {
   banner.textContent = message;
   document.querySelector(".stage").appendChild(banner);
   setTimeout(() => banner.remove(), 6000);
+
+  // ハンズフリーモードでは、エラーが起きても画面操作なしで使い続けられるよう、
+  // 少し待ってから自動的に聞き取りを再開する
+  if (handsFreeCheckbox.checked) {
+    setTimeout(() => {
+      if (!isListening) startListening();
+    }, 1500);
+  }
 }
 
 function scrollToTranscriptTop() {
@@ -902,4 +929,24 @@ if ("serviceWorker" in navigator) {
       // 登録に失敗しても、通常のWebアプリとしては引き続き使える
     });
   });
+}
+
+// ============================================================
+// ハンズフリーモード（運転中・作業中など、画面操作なしで使うための設定）
+// ============================================================
+const HANDSFREE_STORAGE_KEY = "voicebridge_handsfree";
+
+handsFreeCheckbox.addEventListener("change", () => {
+  localStorage.setItem(HANDSFREE_STORAGE_KEY, handsFreeCheckbox.checked ? "1" : "0");
+  if (handsFreeCheckbox.checked && !isListening) {
+    startListening();
+  }
+});
+
+if (localStorage.getItem(HANDSFREE_STORAGE_KEY) === "1") {
+  handsFreeCheckbox.checked = true;
+  // ページを開いた直後は、マイクの許可ダイアログなどとぶつからないよう少し待ってから開始する
+  setTimeout(() => {
+    if (!isListening) startListening();
+  }, 800);
 }

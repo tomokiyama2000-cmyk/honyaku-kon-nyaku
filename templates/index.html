@@ -141,6 +141,15 @@
           <small>{{ "話す言語・翻訳する言語のどちらが話されたか自動で判別する" if auto_detect_available else "利用するにはサーバー側で音声認識APIの設定が必要です" }}</small>
         </span>
       </label>
+
+      <label class="setting-toggle">
+        <input type="checkbox" id="handsFreeCheckbox">
+        <span class="setting-toggle__switch"></span>
+        <span class="setting-toggle__text">
+          <strong>🚗 ハンズフリーモード</strong>
+          <small>アプリを開くと自動で聞き取りを開始し、画面操作なしで使い続けられる</small>
+        </span>
+      </label>
     </div>
   </section>
 
