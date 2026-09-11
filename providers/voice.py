@@ -19,7 +19,10 @@ import subprocess
 # speed: 読み上げ速度（1.0が標準）
 # pitch_factor: 声の高さの倍率（1.0が変化なし。1.0より大きいと高く、小さいと低くなる）
 VOICE_TONE_PRESETS = {
-    "standard": {"stability": 0.4, "style": 0.35, "speed": None, "pitch_factor": None},
+    # standard: 以前、表現力を上げる目的でstability/styleを調整したことがあったが、
+    # 「せわしない・不自然」というフィードバックを受け、最も自然と評価されていた
+    # 元の値（stability=0.5, style=0.0）に戻している
+    "standard": {"stability": 0.5, "style": 0.0, "speed": None, "pitch_factor": None},
     "friendly": {"stability": 0.15, "style": 0.85, "speed": 1.08, "pitch_factor": 1.10},  # 明るい・テンション高め
     "business": {"stability": 0.80, "style": 0.0, "speed": 0.90, "pitch_factor": 0.90},  # 落ち着いた・まじめ
 }
