@@ -24,6 +24,9 @@ const voiceSampleStatus = document.getElementById("voiceSampleStatus");
 const textInputForm = document.getElementById("textInputForm");
 const textInput = document.getElementById("textInput");
 const clearHistoryButton = document.getElementById("clearHistoryButton");
+const toggleHistoryButton = document.getElementById("toggleHistoryButton");
+const toggleHistoryButtonLabel = document.getElementById("toggleHistoryButtonLabel");
+const latestResult = document.getElementById("latestResult");
 const themeToggleButton = document.getElementById("themeToggleButton");
 const themeIconSun = document.getElementById("themeIconSun");
 const themeIconMoon = document.getElementById("themeIconMoon");
@@ -276,6 +279,10 @@ async function sendToServer(text, sourceLanguageOverride, targetLanguageOverride
       data.original_text, data.translated_text, data.original_audio_url,
       data.translated_audio_url, data.voice_cloned, data.id, data.timestamp
     );
+    showLatestResult(
+      data.original_text, data.translated_text, data.original_audio_url,
+      data.translated_audio_url, data.voice_cloned, data.id, data.timestamp
+    );
     scrollToTranscriptTop();
 
     player.src = data.translated_audio_url;
@@ -337,7 +344,7 @@ function showError(message) {
 }
 
 function scrollToTranscriptTop() {
-  transcript.scrollIntoView({ behavior: "smooth", block: "start" });
+  latestResult.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function makePlayButton(audioUrl) {
@@ -428,7 +435,8 @@ function makeFavoriteButton(text) {
   return button;
 }
 
-function addToTranscript(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId, timestamp) {
+function buildBubblePair(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId, timestamp, options = {}) {
+  const { withDelete = true } = options;
   const tag = voiceCloned
     ? '<span class="voice-tag voice-tag--cloned">あなたの声</span>'
     : '<span class="voice-tag voice-tag--natural">標準の声</span>';
@@ -454,12 +462,25 @@ function addToTranscript(original, translated, originalAudioUrl, translatedAudio
   translatedRow.appendChild(makeCopyButton(translated));
   translatedRow.appendChild(makePlayButton(translatedAudioUrl));
 
-  if (entryId) {
+  if (withDelete && entryId) {
     pair.querySelector(".bubble-pair__footer").appendChild(makeDeleteButton(entryId, pair));
   }
 
+  return pair;
+}
+
+function addToTranscript(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId, timestamp) {
+  const pair = buildBubblePair(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId, timestamp, { withDelete: true });
   transcript.prepend(pair);
   updateEmptyState();
+}
+
+// 直近のやり取りだけを、常に見える場所に表示する（履歴一覧を開かなくても最新の結果が分かるように）
+function showLatestResult(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId, timestamp) {
+  const pair = buildBubblePair(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId, timestamp, { withDelete: false });
+  latestResult.innerHTML = "";
+  latestResult.appendChild(pair);
+  latestResult.style.display = "flex";
 }
 
 function formatTimestamp(timestamp) {
@@ -477,11 +498,15 @@ function updateEmptyState() {
   let emptyState = transcript.parentElement.querySelector(".transcript-empty");
   if (hasEntries) {
     if (emptyState) emptyState.remove();
-  } else if (!emptyState) {
-    emptyState = document.createElement("div");
-    emptyState.className = "transcript-empty";
-    emptyState.textContent = "まだ会話履歴がありません。マイクのボタンを押すか、下のテキスト欄に入力して話しかけてみましょう。";
-    transcript.after(emptyState);
+  } else {
+    if (!emptyState) {
+      emptyState = document.createElement("div");
+      emptyState.className = "transcript-empty";
+      emptyState.textContent = "まだ会話履歴がありません。マイクのボタンを押すか、下のテキスト欄に入力して話しかけてみましょう。";
+      transcript.after(emptyState);
+    }
+    // 履歴パネルが閉じている間は、空状態メッセージも一緒に隠しておく
+    emptyState.style.display = historyPanelOpen ? "" : "none";
   }
 }
 
@@ -545,6 +570,9 @@ function swapLanguages() {
 swapButton.addEventListener("click", swapLanguages);
 
 // ---- 会話履歴の読み込み・削除 ----
+let historyLoaded = false;
+let historyPanelOpen = false;
+
 async function loadHistory() {
   try {
     const response = await fetch("/api/history");
@@ -574,6 +602,27 @@ async function loadHistory() {
   }
 }
 
+// 「過去の履歴を見る」ボタン：押すたびに一覧の表示・非表示を切り替える。
+// 履歴は毎回の会話ごとに画面下に増え続けると使いにくいため、普段は隠しておき、
+// 見たい時だけこのボタンで呼び出せるようにしている。初めて開いた時に一度だけサーバーから読み込む。
+toggleHistoryButton.addEventListener("click", async () => {
+  historyPanelOpen = !historyPanelOpen;
+  toggleHistoryButton.setAttribute("aria-expanded", String(historyPanelOpen));
+  toggleHistoryButtonLabel.textContent = historyPanelOpen ? "履歴を閉じる" : "過去の履歴を見る";
+  clearHistoryButton.style.display = historyPanelOpen ? "inline" : "none";
+
+  if (historyPanelOpen && !historyLoaded) {
+    historyLoaded = true;
+    toggleHistoryButtonLabel.textContent = "読み込み中...";
+    await loadHistory();
+    toggleHistoryButtonLabel.textContent = "履歴を閉じる";
+  }
+
+  transcript.style.display = historyPanelOpen ? "flex" : "none";
+  const emptyState = transcript.parentElement.querySelector(".transcript-empty");
+  if (emptyState) emptyState.style.display = historyPanelOpen ? "" : "none";
+});
+
 clearHistoryButton.addEventListener("click", async () => {
   if (!confirm("会話履歴をすべて削除しますか？この操作は取り消せません。")) return;
   try {
@@ -584,8 +633,6 @@ clearHistoryButton.addEventListener("click", async () => {
     statusText.textContent = "履歴の削除に失敗しました。";
   }
 });
-
-loadHistory();
 
 // ---- 声のサンプルを録音する ----
 const RECORD_DURATION_MS = 60000; // 60秒間録音する（ElevenLabsの推奨：1〜2分程度の明瞭な音声）

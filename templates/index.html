@@ -195,12 +195,21 @@
     <div class="favorites-row" id="favoritesRow"></div>
   </section>
 
+  <section class="latest-result" id="latestResult" style="display:none;"></section>
+
   <div class="transcript-header">
-    <span class="transcript-header__label">会話履歴</span>
-    <button id="clearHistoryButton" class="clear-history-button">履歴を削除</button>
+    <button id="toggleHistoryButton" class="toggle-history-button" type="button" aria-expanded="false" aria-controls="transcript">
+      <svg class="toggle-history-button__icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3v5h5"/>
+        <path d="M3.05 13a9 9 0 1 0 2.13-7.86L3 8"/>
+        <path d="M12 7v5l4 2"/>
+      </svg>
+      <span id="toggleHistoryButtonLabel">過去の履歴を見る</span>
+    </button>
+    <button id="clearHistoryButton" class="clear-history-button" style="display:none;">履歴を削除</button>
   </div>
 
-  <section class="transcript" id="transcript" aria-live="polite">
+  <section class="transcript" id="transcript" aria-live="polite" style="display:none;">
     <!-- 会話履歴がここに追加されていく -->
   </section>
 </div>
