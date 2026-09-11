@@ -378,8 +378,13 @@ def process():
 
     try:
         if use_clone:
-            # 翻訳文は少しゆっくりめに読み上げる（原文の言語より聞き取りにくいことが多いため）
-            speak_with_cloned_voice(translated, voice_id, filepath, speed=0.85, tone=voice_tone)
+            # 翻訳文は少しゆっくりめに読み上げる（原文の言語より聞き取りにくいことが多いため）。
+            # ただし「明るい」「落ち着いた」などのトーンには、それぞれ意図した速度設定が
+            # 別に存在するため、標準トーンの時だけこの追加の速度指定を適用する
+            # （トーン独自の速度と衝突すると、特にstabilityの低い「明るい」トーンで
+            # 　音声生成が不安定になり雑音が発生することが分かったため）
+            translated_speed = 0.85 if voice_tone == "standard" else None
+            speak_with_cloned_voice(translated, voice_id, filepath, speed=translated_speed, tone=voice_tone)
         else:
             asyncio.run(_speak_to_file(translated, lang_info["voice"], filepath, tone=voice_tone))
     except Exception as e:
