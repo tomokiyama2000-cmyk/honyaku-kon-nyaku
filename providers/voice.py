@@ -38,6 +38,7 @@ def _shift_pitch(filepath, pitch_factor):
             [
                 "ffmpeg", "-y", "-i", filepath,
                 "-af", f"asetrate=44100*{pitch_factor},aresample=44100,atempo={1 / pitch_factor}",
+		"-b:a", "192k", "-ar", "44100",
                 temp_path,
             ],
             capture_output=True, text=True, timeout=30,
