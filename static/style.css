@@ -14,6 +14,9 @@
   --bg: #F3E9D6;
   --panel: #FFFCF5;
   --panel-raised: #F1E4C9;
+  --shell: #FBF1DC;
+  --shell-dark: #ECD9AE;
+  --rivet: #8A7454;
   --accent: #C9711F;
   --accent-strong: #A8590F;
   --accent-soft: #F2C78C;
@@ -72,7 +75,20 @@ body {
   max-width: 520px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-5);
+  position: relative;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle 5px at 22px 22px, var(--rivet) 55%, rgba(138, 116, 84, 0.25) 72%, transparent 88%),
+    radial-gradient(circle 5px at calc(100% - 22px) 22px, var(--rivet) 55%, rgba(138, 116, 84, 0.25) 72%, transparent 88%),
+    radial-gradient(circle 5px at 22px calc(100% - 22px), var(--rivet) 55%, rgba(138, 116, 84, 0.25) 72%, transparent 88%),
+    radial-gradient(circle 5px at calc(100% - 22px) calc(100% - 22px), var(--rivet) 55%, rgba(138, 116, 84, 0.25) 72%, transparent 88%),
+    linear-gradient(180deg, var(--shell) 0%, var(--shell-dark) 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -8px 16px rgba(43, 32, 24, 0.10),
+    0 24px 48px rgba(43, 32, 24, 0.16);
 }
 
 button, input, select {
@@ -90,7 +106,7 @@ button {
   top: 0;
   z-index: 10;
   padding: var(--space-2) 0 var(--space-3);
-  background: rgba(255, 252, 245, 0.82);
+  background: rgba(251, 241, 220, 0.88);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -175,7 +191,9 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: var(--space-5);
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    inset 0 2px 5px rgba(43, 32, 24, 0.09),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.6);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -297,12 +315,17 @@ button {
 
 .lang-bar__field select {
   appearance: none;
-  background: var(--panel-raised);
+  background-color: var(--panel-raised);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237C6C55' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
   font-size: 0.92rem;
+  box-shadow: inset 0 2px 4px rgba(43, 32, 24, 0.14);
 }
 
 .lang-bar__field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -333,7 +356,9 @@ button {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    inset 0 2px 5px rgba(43, 32, 24, 0.09),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.6);
   padding: var(--space-5);
 }
 
@@ -414,34 +439,36 @@ button {
 .setting-toggle__switch {
   flex-shrink: 0;
   position: relative;
-  width: 40px;
-  height: 24px;
-  border-radius: var(--radius-full);
+  width: 46px;
+  height: 27px;
+  border-radius: 8px;
   background: var(--panel-raised);
   border: 1px solid var(--border);
+  box-shadow: inset 0 2px 4px rgba(43, 32, 24, 0.16);
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .setting-toggle__switch::after {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #FFFFFF;
-  box-shadow: 0 1px 3px rgba(43, 32, 24, 0.25);
-  transition: transform 0.15s ease;
+  top: 3px;
+  left: 3px;
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #E4D8C0 100%);
+  box-shadow: 0 2px 2px rgba(43, 32, 24, 0.3);
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .setting-toggle input:checked + .setting-toggle__switch {
-  background: var(--accent);
+  background: rgba(201, 113, 31, 0.22);
   border-color: var(--accent);
 }
 
 .setting-toggle input:checked + .setting-toggle__switch::after {
-  transform: translateX(16px);
+  transform: translateX(19px);
+  background: linear-gradient(180deg, var(--accent-soft) 0%, var(--accent) 100%);
 }
 
 .setting-toggle input:focus-visible + .setting-toggle__switch {
@@ -512,6 +539,7 @@ button {
 }
 
 .mic-button {
+  position: relative;
   width: 88px;
   height: 88px;
   border-radius: 50%;
@@ -525,6 +553,32 @@ button {
     0 6px 0 #8A4A0C,
     0 12px 28px rgba(201, 113, 31, 0.3);
   transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.15s ease;
+}
+
+.mic-button::before,
+.mic-button::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  border: 2px dashed rgba(168, 89, 15, 0.45);
+  pointer-events: none;
+}
+
+.mic-button::before { top: -14px; right: -14px; bottom: -14px; left: -14px; }
+.mic-button::after { top: -28px; right: -28px; bottom: -28px; left: -28px; border-color: rgba(168, 89, 15, 0.25); }
+
+.mic-button.listening::before,
+.mic-button.listening::after {
+  border-style: solid;
+  border-color: rgba(232, 91, 61, 0.35);
+  animation: sonar-ping 1.6s ease-out infinite;
+}
+
+.mic-button.listening::after { animation-delay: 0.4s; }
+
+@keyframes sonar-ping {
+  0% { transform: scale(0.9); opacity: 0.9; }
+  100% { transform: scale(1.25); opacity: 0; }
 }
 
 .mic-button:hover { transform: translateY(-2px); }
@@ -612,7 +666,9 @@ button {
   border-top: 3px solid var(--teal);
   border-radius: var(--radius-md);
   padding: var(--space-4);
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    inset 0 2px 5px rgba(43, 32, 24, 0.09),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .latest-result__label {
@@ -894,6 +950,9 @@ button {
   --bg: #1B1611;
   --panel: #241D16;
   --panel-raised: #2E2519;
+  --shell: #2A2117;
+  --shell-dark: #1C160F;
+  --rivet: #8A7454;
   --accent: #E0954A;
   --accent-strong: #B36A1F;
   --accent-soft: #F2C78C;
@@ -911,7 +970,7 @@ button {
 }
 
 [data-theme="dark"] .app__header {
-  background: rgba(27, 22, 17, 0.82);
+  background: rgba(42, 33, 23, 0.88);
 }
 
 [data-theme="dark"] .mic-button,
@@ -1141,6 +1200,8 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .waveform.active span,
   .mic-button.processing,
+  .mic-button.listening::before,
+  .mic-button.listening::after,
   .error-banner {
     animation: none;
   }
