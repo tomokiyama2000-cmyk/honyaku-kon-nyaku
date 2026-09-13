@@ -478,7 +478,7 @@ function addToTranscript(original, translated, originalAudioUrl, translatedAudio
 // 直近のやり取りだけを、常に見える場所に表示する（履歴一覧を開かなくても最新の結果が分かるように）
 function showLatestResult(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId, timestamp) {
   const pair = buildBubblePair(original, translated, originalAudioUrl, translatedAudioUrl, voiceCloned, entryId, timestamp, { withDelete: false });
-  latestResult.innerHTML = "";
+  latestResult.innerHTML = '<p class="latest-result__label">🔊 さいしんのやりとり</p>';
   latestResult.appendChild(pair);
   latestResult.style.display = "flex";
 }
