@@ -26,4 +26,5 @@ cp design-patterns/pattern番号-名前/style.css static/style.css
 
 | フォルダ名 | 通称 | 特徴 |
 |---|---|---|
+| `pattern1-premium-minimal` | プレミアム・ミニマル系 | ほぼ白黒のグレースケール+インディゴ1色のみのアクセント。細いヘアラインボーダー、余白重視のレイアウト。Linear/Notionのような、プロフェッショナルで落ち着いた印象 |
 | `pattern2-pop-sticker` | ポップ・ステッカー系 | 太いアウトライン+ベタ塗りのオフセット影。紙工作・シールのような質感。タイトルバッジは傾いたシール風 |
