@@ -1077,6 +1077,91 @@ button {
   display: grid;
 }
 
+/* ============================================================
+   Camera capture overlay (OCR)
+   ============================================================ */
+.camera-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.85);
+  display: none;
+  place-items: center;
+  padding: var(--space-4);
+  z-index: 110;
+}
+
+.camera-overlay.is-visible {
+  display: grid;
+}
+
+.camera-card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.camera-video {
+  width: 100%;
+  max-height: 60vh;
+  border-radius: var(--radius-md);
+  background: #000;
+  object-fit: cover;
+}
+
+.camera-status-text {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #FFFFFF;
+  text-align: center;
+  min-height: 1.2em;
+}
+
+.camera-card__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+.camera-shutter-button {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 3px solid #FFFFFF;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+.camera-shutter-button::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  transition: transform 0.1s ease;
+}
+
+.camera-shutter-button:active::after { transform: scale(0.85); }
+
+.camera-side-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.camera-side-button:hover { background: rgba(255, 255, 255, 0.22); }
+
 .tutorial-card {
   background: var(--panel);
   border: 1px solid var(--border);

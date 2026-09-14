@@ -1060,3 +1060,20 @@ GitHubにpush済み。実機での動作確認（環境変数の反映、「高�
   - Python構文チェック、JavaScript構文チェック、HTML内の全要素IDとJSの参照の整合性確認
 - `CURRENT_STATE.md`の環境変数一覧に`GOOGLE_VISION_API_KEY`を追記
 - GitHubにpush済み。実際のAPIキーでの動作確認（Google Cloud ConsoleでVision APIを有効化する必要あり）はこれから
+
+### OCR機能：その場でのライブカメラ撮影に対応
+
+- ユーザーから「既存の写真をアップロードできる機能だけでなく、カメラでその場で撮影して翻訳する機能も付けてほしい」との要望
+  - 従来は `<input type="file" accept="image/*" capture="environment">` を使っており、スマホでは概ねカメラが起動するが、
+    パソコンのブラウザではファイル選択ダイアログが開くだけで「その場で撮影する」体験にはなっていなかった
+- `navigator.mediaDevices.getUserMedia()` を使い、アプリ内にライブカメラのプレビュー画面（モーダル）を実装
+  - `templates/index.html`：`camera-overlay` モーダルを新設。ライブ映像・シャッターボタン・アルバムから選ぶボタン・閉じるボタンを配置
+  - `static/app.js`
+    - カメラボタン押下時、まずライブカメラモーダルを開くようにした（`getUserMedia`非対応の環境では、自動的に従来のファイル選択に切り替える）
+    - シャッターボタン押下で、映像の現在のフレームを`<canvas>`に描画→JPEG画像に変換してサーバーへ送信
+    - 撮影・アップロード・ファイル選択のいずれの経路でも、最終的に同じ`/api/ocr`送信処理（`processOcrImage()`として共通化）を通るようにリファクタリング
+    - ページを離れる際にカメラストリームを確実に停止するようにした（つけっぱなしにならないように）
+  - `static/style.css`：カメラモーダルのスタイル（既存の`tutorial-overlay`と同じ「`is-visible`クラスの付け外しで表示切替する」設計を踏襲）を追加
+- 開発サーバー上で、Python/JavaScript/CSSの構文チェック、全要素IDの整合性確認を実施し成功
+  （`getUserMedia`はブラウザのカメラ権限が必要なため、実際の動作確認は実機でのみ可能）
+- GitHubにpush済み。実機での動作確認（カメラの起動、撮影、読み取り）はこれから

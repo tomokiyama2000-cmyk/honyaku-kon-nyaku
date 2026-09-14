@@ -556,48 +556,126 @@ textInputForm.addEventListener("submit", async (event) => {
 // 読み取った文字は自動送信せず、テキスト入力欄に反映してユーザーが内容を
 // 確認・修正してから送信できるようにしている（読み取りミスがあり得るため）
 const ocrButton = document.getElementById("ocrButton");
-const ocrImageInput = document.getElementById("ocrImageInput");
+const ocrGalleryInput = document.getElementById("ocrGalleryInput");
 const ocrStatusText = document.getElementById("ocrStatusText");
+const cameraOverlay = document.getElementById("cameraOverlay");
+const cameraVideo = document.getElementById("cameraVideo");
+const cameraCanvas = document.getElementById("cameraCanvas");
+const cameraStatusText = document.getElementById("cameraStatusText");
+const cameraShutterButton = document.getElementById("cameraShutterButton");
+const cameraGalleryButton = document.getElementById("cameraGalleryButton");
+const cameraCloseButton = document.getElementById("cameraCloseButton");
 
-if (ocrButton && ocrImageInput) {
-  ocrButton.addEventListener("click", () => {
-    ocrImageInput.click();
-  });
+let cameraStream = null;
 
-  ocrImageInput.addEventListener("change", async () => {
-    const file = ocrImageInput.files[0];
-    ocrImageInput.value = ""; // 同じ画像を連続で選んでもchangeイベントが発火するようにリセット
-    if (!file) return;
+// 画像（File または Blob）をサーバーに送って文字を読み取り、テキスト入力欄に反映する
+async function processOcrImage(imageBlob) {
+  ocrButton.disabled = true;
+  if (ocrStatusText) ocrStatusText.textContent = "文字を読み取っています...";
 
-    ocrButton.disabled = true;
-    if (ocrStatusText) ocrStatusText.textContent = "文字を読み取っています...";
+  const formData = new FormData();
+  formData.append("image", imageBlob, "photo.jpg");
 
-    const formData = new FormData();
-    formData.append("image", file);
+  try {
+    const response = await fetch("/api/ocr", { method: "POST", body: formData });
+    const data = await response.json();
 
-    try {
-      const response = await fetch("/api/ocr", { method: "POST", body: formData });
-      const data = await response.json();
-
-      if (!response.ok || data.error) {
-        if (ocrStatusText) ocrStatusText.textContent = data.error || "文字の読み取りに失敗しました。";
-        return;
-      }
-      if (!data.text) {
-        if (ocrStatusText) ocrStatusText.textContent = "文字を読み取れませんでした。写真を撮り直してみてください。";
-        return;
-      }
-
-      textInput.value = data.text;
-      textInput.focus();
-      textInput.select();
-      if (ocrStatusText) ocrStatusText.textContent = "読み取りました。内容を確認して送信してください。";
-    } catch (err) {
-      if (ocrStatusText) ocrStatusText.textContent = "サーバーとの通信に失敗しました。";
-    } finally {
-      ocrButton.disabled = false;
+    if (!response.ok || data.error) {
+      if (ocrStatusText) ocrStatusText.textContent = data.error || "文字の読み取りに失敗しました。";
+      return;
     }
+    if (!data.text) {
+      if (ocrStatusText) ocrStatusText.textContent = "文字を読み取れませんでした。写真を撮り直してみてください。";
+      return;
+    }
+
+    textInput.value = data.text;
+    textInput.focus();
+    textInput.select();
+    if (ocrStatusText) ocrStatusText.textContent = "読み取りました。内容を確認して送信してください。";
+  } catch (err) {
+    if (ocrStatusText) ocrStatusText.textContent = "サーバーとの通信に失敗しました。";
+  } finally {
+    ocrButton.disabled = false;
+  }
+}
+
+function stopCameraStream() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((track) => track.stop());
+    cameraStream = null;
+  }
+  if (cameraVideo) cameraVideo.srcObject = null;
+}
+
+function closeCameraOverlay() {
+  stopCameraStream();
+  if (cameraOverlay) cameraOverlay.classList.remove("is-visible");
+}
+
+async function openCameraOverlay() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    // ライブカメラに対応していない環境（古いブラウザなど）では、
+    // 端末標準のカメラ・アルバム選択にそのまま任せる
+    ocrGalleryInput.click();
+    return;
+  }
+
+  cameraOverlay.classList.add("is-visible");
+  if (cameraStatusText) cameraStatusText.textContent = "カメラを起動しています...";
+
+  try {
+    // スマホでは背面カメラ（environment）を優先。無ければ使える方を使う
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false,
+    });
+    cameraVideo.srcObject = cameraStream;
+    if (cameraStatusText) cameraStatusText.textContent = "文字がはっきり写るように近づけて撮影してください。";
+  } catch (err) {
+    // 許可されなかった・カメラが無いなどの場合は、アルバム選択に切り替える
+    if (cameraStatusText) cameraStatusText.textContent = "カメラを使用できませんでした。";
+    closeCameraOverlay();
+    ocrGalleryInput.click();
+  }
+}
+
+if (ocrButton && ocrGalleryInput && cameraOverlay) {
+  ocrButton.addEventListener("click", openCameraOverlay);
+
+  cameraShutterButton.addEventListener("click", () => {
+    if (!cameraStream) return;
+    const track = cameraStream.getVideoTracks()[0];
+    const settings = track.getSettings ? track.getSettings() : {};
+    const width = settings.width || cameraVideo.videoWidth;
+    const height = settings.height || cameraVideo.videoHeight;
+
+    cameraCanvas.width = width;
+    cameraCanvas.height = height;
+    cameraCanvas.getContext("2d").drawImage(cameraVideo, 0, 0, width, height);
+
+    closeCameraOverlay();
+
+    cameraCanvas.toBlob((blob) => {
+      if (blob) processOcrImage(blob);
+    }, "image/jpeg", 0.92);
   });
+
+  cameraCloseButton.addEventListener("click", closeCameraOverlay);
+
+  cameraGalleryButton.addEventListener("click", () => {
+    closeCameraOverlay();
+    ocrGalleryInput.click();
+  });
+
+  ocrGalleryInput.addEventListener("change", async () => {
+    const file = ocrGalleryInput.files[0];
+    ocrGalleryInput.value = ""; // 同じ画像を連続で選んでもchangeイベントが発火するようにリセット
+    if (!file) return;
+    await processOcrImage(file);
+  });
+
+  window.addEventListener("beforeunload", stopCameraStream);
 }
 
 micButton.addEventListener("click", () => {
