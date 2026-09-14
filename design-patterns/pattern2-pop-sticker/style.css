@@ -1,28 +1,36 @@
 /* ============================================================
    VoiceBridge（ほんやくコンニャク） デザイントークン
 
-   カラー: ほぼ白黒のグレースケール + インディゴのアクセント1色のみ
-           （Linear/Notionのような、余白と質感で魅せるプロフェッショナルな配色）
-   タイプ: 見出し・本文ともにIBM Plex Sans JP（過度な装飾を避け、太さと余白で個性を出す）
-   余白のスケール: 4の倍数（4/8/12/16/20/24/32px）で統一。プレミアム路線のため通常よりやや広め
-   影: ほぼ使わない。使う場合も極めて薄いもの1段階のみ
-   角丸のスケール: sm=10px（入力・小ボタン）/ md=16px（カード）/ full=999px（丸ボタン・ピル）
+   カラー: 紙工作・シールのような、太いアウトライン+ビビッドなパステルカラー
+   タイプ: 見出し=M PLUS Rounded 1c（丸ゴシック、ポップで親しみやすい）
+           本文=IBM Plex Sans JP
+   余白のスケール: 4の倍数（4/8/12/16/20/24/32px）で統一
+   影: 太いアウトライン + ベタ塗りの「ポン」と飛び出すオフセット影（ぼかし無し）のみ
+   角丸のスケール: sm=12px（入力・小ボタン）/ md=18px（カード）/ full=999px（丸ボタン・ピル）
    ============================================================ */
 
 :root {
-  --bg: #FAFAF9;
+  --bg: #FFF6E9;
   --panel: #FFFFFF;
-  --panel-raised: #F4F4F3;
-  --accent: #3D4EE0;
-  --accent-strong: #2C3ACB;
-  --accent-soft: #E8EAFC;
-  --teal: #2F9E63;
-  --teal-soft: #E4F5EA;
-  --text: #141414;
-  --text-muted: #6B6B6B;
-  --text-faint: #A3A3A0;
-  --border: #E6E5E1;
-  --danger: #D5432E;
+  --panel-raised: #FFF1D6;
+  --ink: #2B2018;
+  --pink: #FF8FA3;
+  --pink-deep: #E85D79;
+  --pink-text: #7A1E33;
+  --yellow: #FFE59A;
+  --yellow-text: #7A5A06;
+  --mint: #A6E3C4;
+  --mint-text: #1F6B45;
+  --sky: #7FC8E8;
+  --sky-text: #145179;
+  --accent: var(--pink-deep);
+  --accent-strong: #C23F5D;
+  --accent-soft: var(--pink);
+  --teal: #1F6B45;
+  --text: var(--ink);
+  --text-muted: #6B5A47;
+  --border: var(--ink);
+  --danger: #D6402F;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -32,19 +40,21 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  --radius-sm: 10px;
-  --radius-md: 16px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
   --radius-full: 999px;
 
-  --shadow-sm: 0 1px 2px rgba(20, 20, 20, 0.05);
-  --shadow-md: 0 8px 24px rgba(20, 20, 20, 0.10);
+  --pop-sm: 3px 3px 0 var(--ink);
+  --pop-md: 4px 4px 0 var(--ink);
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(circle, rgba(43, 32, 24, 0.06) 1.5px, transparent 2px) 0 0 / 22px 22px,
+    var(--bg);
   color: var(--text);
   font-family: 'IBM Plex Sans JP', 'Hiragino Sans', sans-serif;
   min-height: 100vh;
@@ -71,9 +81,9 @@ body {
   max-width: 520px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-5);
   position: relative;
-  padding: 0 var(--space-1) var(--space-8);
+  padding: 0 var(--space-2) var(--space-8);
 }
 
 button, input, select {
@@ -91,7 +101,7 @@ button {
   top: 0;
   z-index: 10;
   padding: var(--space-4) 0 var(--space-3);
-  background: rgba(250, 250, 249, 0.9);
+  background: rgba(255, 246, 233, 0.9);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
@@ -103,25 +113,29 @@ button {
   gap: var(--space-2);
   padding: var(--space-3) var(--space-6);
   border-radius: var(--radius-full);
-  background: var(--text);
+  background: var(--pink);
+  border: 2.5px solid var(--ink);
+  box-shadow: var(--pop-md);
+  transform: rotate(-1.5deg);
   margin-bottom: var(--space-1);
 }
 
 .gadget-badge__knob {
-  width: 7px;
-  height: 7px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--yellow);
+  border: 2px solid var(--ink);
   flex-shrink: 0;
 }
 
 .app__title {
-  font-family: 'IBM Plex Sans JP', sans-serif;
-  font-weight: 600;
-  font-size: 1.2rem;
-  letter-spacing: 0.01em;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  font-weight: 800;
+  font-size: 1.85rem;
+  letter-spacing: 0.02em;
   margin: 0;
-  color: var(--bg);
+  color: var(--pink-text);
 }
 
 .app__tagline {
@@ -142,8 +156,8 @@ button {
 }
 
 .setup-warning {
-  background: rgba(213, 67, 46, 0.06);
-  border: 1px solid rgba(213, 67, 46, 0.2);
+  background: rgba(194, 74, 54, 0.08);
+  border: 1px solid rgba(194, 74, 54, 0.25);
   color: var(--danger);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
@@ -154,9 +168,10 @@ button {
 /* ---- Setup card (voice sample + language pair) ---- */
 .setup-card {
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 2.5px solid var(--ink);
   border-radius: var(--radius-md);
   padding: var(--space-5);
+  box-shadow: var(--pop-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -169,16 +184,16 @@ button {
 }
 
 .setup-card__label {
-  font-family: 'IBM Plex Sans JP', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-faint);
-  letter-spacing: 0.03em;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--pink-text);
 }
 
 .setup-card__divider {
-  height: 1px;
+  height: 2px;
   background: var(--border);
+  opacity: 0.15;
   margin: var(--space-1) 0;
 }
 
@@ -186,14 +201,15 @@ button {
   padding: 3px var(--space-3);
   border-radius: var(--radius-full);
   background: var(--panel-raised);
+  border: 1.5px solid var(--ink);
   color: var(--text-muted);
   font-size: 0.72rem;
   font-weight: 600;
 }
 
 .status-pill--ok {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+  background: var(--mint);
+  color: var(--mint-text);
 }
 
 .record-duration-picker {
@@ -215,21 +231,23 @@ button {
 }
 
 .duration-option {
-  border: 1px solid var(--border);
+  border: 2px solid var(--ink);
   background: var(--panel-raised);
-  color: var(--text-muted);
+  color: var(--text);
   border-radius: var(--radius-full);
   padding: 6px var(--space-3);
   font-size: 0.78rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
+.duration-option:active { transform: translate(2px, 2px); box-shadow: none; }
+
 .duration-option.is-active {
-  background: var(--text);
-  color: var(--bg);
-  border-color: var(--text);
+  background: var(--sky);
+  color: var(--sky-text);
 }
 
 .record-duration-picker__hint {
@@ -241,24 +259,25 @@ button {
 .record-button {
   position: relative;
   overflow: hidden;
-  background: var(--panel-raised);
-  border: 1px solid var(--border);
+  background: var(--yellow);
+  border: 2.5px solid var(--ink);
   border-radius: var(--radius-sm);
   padding: var(--space-3);
-  color: var(--text);
+  color: var(--yellow-text);
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: border-color 0.15s ease;
+  box-shadow: var(--pop-sm);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-.record-button:active { opacity: 0.85; }
+.record-button:active { transform: translate(3px, 3px); box-shadow: none; }
 
 .record-button__progress {
   position: absolute;
   inset: 0;
   width: 0%;
-  background: var(--accent-soft);
+  background: rgba(232, 91, 61, 0.22);
   transition: width 1s linear;
   z-index: 0;
 }
@@ -269,9 +288,8 @@ button {
 }
 
 .record-button.recording {
-  background: #FBEAE6;
-  border-color: rgba(213, 67, 46, 0.3);
-  color: var(--danger);
+  background: var(--pink);
+  color: var(--pink-text);
 }
 
 .record-button--subtle {
@@ -323,56 +341,61 @@ button {
 .lang-bar__field select {
   appearance: none;
   background-color: var(--panel-raised);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B6B6B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232B2018' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 16px;
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 2px solid var(--ink);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
   font-size: 0.92rem;
+  box-shadow: 2px 2px 0 var(--ink);
 }
 
-.lang-bar__field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.lang-bar__field select:focus-visible { outline: 2px solid var(--sky-text); outline-offset: 1px; }
 
 .swap-button {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text-muted);
+  border: 2.5px solid var(--ink);
+  background: var(--sky);
+  color: var(--sky-text);
   display: grid;
   place-items: center;
   cursor: pointer;
   margin-bottom: 3px;
-  transition: background 0.15s ease, color 0.15s ease;
+  box-shadow: var(--pop-sm);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-.swap-button:hover { background: var(--panel-raised); color: var(--text); }
+.swap-button:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
 
 /* ---- Conversation options (always visible, toggle switches) ---- */
 .options-card {
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 2.5px solid var(--ink);
   border-radius: var(--radius-md);
+  box-shadow: var(--pop-md);
   padding: var(--space-5);
 }
 
 .options-card__title {
-  font-family: 'IBM Plex Sans JP', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-faint);
-  letter-spacing: 0.03em;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--pink-text);
   margin: 0 0 var(--space-3);
 }
 
 /* ---- Voice tone selector ---- */
 .tone-selector {
   padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px dashed var(--border);
   margin-bottom: var(--space-2);
 }
 
@@ -386,29 +409,27 @@ button {
 .tone-selector__options {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  background: var(--panel-raised);
-  border-radius: var(--radius-sm);
-  padding: 2px;
+  gap: var(--space-2);
 }
 
 .tone-option {
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  border-radius: 8px;
-  padding: var(--space-2) var(--space-1);
+  border: 2px solid var(--ink);
+  background: var(--panel-raised);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-1);
   font-size: 0.78rem;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  box-shadow: var(--pop-sm);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
+.tone-option:active { transform: translate(3px, 3px); box-shadow: none; }
+
 .tone-option.is-active {
-  background: var(--panel);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
-  font-weight: 600;
+  background: var(--yellow);
+  color: var(--yellow-text);
 }
 
 .options-card__body {
@@ -421,7 +442,7 @@ button {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-top: 1px solid var(--border);
+  border-top: 2px dashed var(--border);
   cursor: pointer;
 }
 
@@ -437,11 +458,12 @@ button {
 .setting-toggle__switch {
   flex-shrink: 0;
   position: relative;
-  width: 40px;
-  height: 24px;
-  border-radius: var(--radius-full);
-  background: var(--border);
-  transition: background 0.15s ease;
+  width: 46px;
+  height: 27px;
+  border-radius: 8px;
+  background: var(--panel-raised);
+  border: 2px solid var(--ink);
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .setting-toggle__switch::after {
@@ -449,20 +471,22 @@ button {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #FFFFFF;
-  box-shadow: 0 1px 3px rgba(20, 20, 20, 0.25);
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  background: var(--panel);
+  border: 2px solid var(--ink);
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .setting-toggle input:checked + .setting-toggle__switch {
-  background: var(--text);
+  background: var(--mint);
+  border-color: var(--ink);
 }
 
 .setting-toggle input:checked + .setting-toggle__switch::after {
-  transform: translateX(16px);
+  transform: translateX(19px);
+  background: var(--yellow);
 }
 
 .setting-toggle input:focus-visible + .setting-toggle__switch {
@@ -534,17 +558,17 @@ button {
 
 .mic-button {
   position: relative;
-  width: 84px;
-  height: 84px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
-  border: none;
-  background: var(--text);
-  color: var(--bg);
+  border: 3px solid var(--ink);
+  background: var(--sky);
+  color: var(--sky-text);
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow: var(--shadow-md);
-  transition: transform 0.1s ease, opacity 0.15s ease;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.15s ease;
 }
 
 .mic-button::before,
@@ -552,16 +576,17 @@ button {
   content: "";
   position: absolute;
   border-radius: 50%;
-  border: 1.5px solid var(--border);
+  border: 2px dashed rgba(43, 32, 24, 0.35);
   pointer-events: none;
 }
 
-.mic-button::before { top: -12px; right: -12px; bottom: -12px; left: -12px; }
-.mic-button::after { top: -24px; right: -24px; bottom: -24px; left: -24px; border-color: var(--border); opacity: 0.6; }
+.mic-button::before { top: -14px; right: -14px; bottom: -14px; left: -14px; }
+.mic-button::after { top: -28px; right: -28px; bottom: -28px; left: -28px; border-color: rgba(43, 32, 24, 0.2); }
 
 .mic-button.listening::before,
 .mic-button.listening::after {
-  border-color: var(--accent);
+  border-style: solid;
+  border-color: rgba(232, 91, 61, 0.4);
   animation: sonar-ping 1.6s ease-out infinite;
 }
 
@@ -572,12 +597,15 @@ button {
   100% { transform: scale(1.25); opacity: 0; }
 }
 
-.mic-button:active { transform: scale(0.96); }
-.mic-button:disabled { opacity: 0.5; cursor: default; transform: none; }
+.mic-button:active {
+  transform: translate(5px, 5px);
+  box-shadow: none;
+}
+.mic-button:disabled { opacity: 0.6; cursor: default; transform: none; }
 
 .mic-button.listening {
-  background: var(--accent);
-  color: #FFFFFF;
+  background: var(--pink);
+  color: var(--pink-text);
 }
 
 .mic-button.processing {
@@ -609,7 +637,7 @@ button {
   flex: 1;
   min-width: 0;
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 2px solid var(--ink);
   border-radius: var(--radius-full);
   padding: var(--space-2) var(--space-4);
   color: var(--text);
@@ -620,19 +648,23 @@ button {
 
 .text-input-submit {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  border: none;
-  background: var(--text);
-  color: var(--bg);
+  border: 2px solid var(--ink);
+  background: var(--mint);
+  color: var(--mint-text);
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  box-shadow: var(--pop-sm);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-.text-input-submit:active { transform: scale(0.94); }
+.text-input-submit:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
 
 /* ---- Transcript (conversation history) ---- */
 .latest-result {
@@ -640,18 +672,18 @@ button {
   flex-direction: column;
   gap: var(--space-2);
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 2.5px solid var(--ink);
   border-radius: var(--radius-md);
   padding: var(--space-4);
+  box-shadow: var(--pop-md);
 }
 
 .latest-result__label {
   margin: 0;
-  font-family: 'IBM Plex Sans JP', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-faint);
-  letter-spacing: 0.03em;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--mint-text);
 }
 
 .transcript-header {
@@ -669,13 +701,13 @@ button {
   border: none;
   color: var(--text-muted);
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   padding: var(--space-1) 0;
   transition: color 0.15s ease;
 }
 
-.toggle-history-button:hover { color: var(--text); }
+.toggle-history-button:hover { color: var(--accent); }
 
 .toggle-history-button__icon {
   flex-shrink: 0;
@@ -715,7 +747,7 @@ button {
   color: var(--text-muted);
   font-size: 0.85rem;
   padding: var(--space-8) var(--space-4);
-  border: 1px dashed var(--border);
+  border: 2px dashed var(--border);
   border-radius: var(--radius-md);
   line-height: 1.6;
 }
@@ -724,7 +756,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px dashed var(--border);
   padding-bottom: var(--space-4);
 }
 
@@ -736,6 +768,7 @@ button {
   font-size: 0.94rem;
   line-height: 1.5;
   max-width: 88%;
+  border: 2px solid var(--ink);
 }
 
 .bubble--source {
@@ -747,8 +780,8 @@ button {
 
 .bubble--translated {
   align-self: flex-end;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+  background: var(--pink);
+  color: var(--pink-text);
   border-bottom-right-radius: var(--space-1);
 }
 
@@ -764,20 +797,26 @@ button {
 .play-button,
 .copy-button {
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text-muted);
+  border: 2px solid var(--ink);
+  background: var(--panel-raised);
+  color: var(--text);
   display: grid;
   place-items: center;
   cursor: pointer;
   padding: 0;
-  transition: background 0.15s ease, color 0.15s ease;
+  box-shadow: var(--pop-sm);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-.play-button:hover, .copy-button:hover { background: var(--panel-raised); color: var(--text); }
+.copy-button { color: var(--text-muted); }
+
+.play-button:active, .copy-button:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
 .play-button:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .bubble-pair__footer {
@@ -796,14 +835,15 @@ button {
 .voice-tag {
   display: inline-block;
   font-size: 0.68rem;
-  font-weight: 600;
+  font-weight: 700;
   padding: 2px var(--space-2);
   border-radius: var(--radius-full);
+  border: 1.5px solid var(--ink);
 }
 
 .voice-tag--cloned {
-  background: var(--teal-soft);
-  color: var(--teal);
+  background: var(--mint);
+  color: var(--mint-text);
 }
 
 .voice-tag--natural {
@@ -863,7 +903,7 @@ button {
   text-align: center;
 }
 
-.app__title--small { font-size: 1.1rem; margin-bottom: 0; }
+.app__title--small { font-size: 1.8rem; margin-bottom: 0; }
 
 .login-form {
   margin-top: var(--space-5);
@@ -875,7 +915,7 @@ button {
 
 .login-form input {
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 2px solid var(--ink);
   border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-4);
   color: var(--text);
@@ -885,18 +925,22 @@ button {
 .login-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .login-form button {
-  background: var(--text);
-  border: none;
+  background: var(--mint);
+  border: 2.5px solid var(--ink);
   border-radius: var(--radius-sm);
   padding: var(--space-3);
-  color: var(--bg);
-  font-weight: 600;
+  color: var(--mint-text);
+  font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  box-shadow: var(--pop-sm);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-.login-form button:active { opacity: 0.85; }
+.login-form button:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
 
 .login-error {
   color: var(--danger);
@@ -917,27 +961,37 @@ button {
    ダークモード（[data-theme="dark"] が html要素に付与されると切り替わる）
    ============================================================ */
 [data-theme="dark"] {
-  --bg: #121212;
-  --panel: #1A1A1A;
-  --panel-raised: #222222;
-  --accent: #6B78EE;
-  --accent-strong: #8792F2;
-  --accent-soft: #262A4D;
-  --teal: #4FBE86;
-  --teal-soft: #1D3A28;
-  --text: #F2F2F0;
-  --text-muted: #9C9C98;
-  --text-faint: #6E6E6A;
-  --border: #2C2C2A;
+  --bg: #1E1712;
+  --panel: #2B2119;
+  --panel-raised: #362A1E;
+  --ink: #F5EDE0;
+  --pink: #E06A85;
+  --pink-deep: #F0879F;
+  --pink-text: #FCE1E7;
+  --yellow: #C99A3C;
+  --yellow-text: #FCEFD2;
+  --mint: #4FA97A;
+  --mint-text: #DFF5E8;
+  --sky: #4B96BE;
+  --sky-text: #DEF0FA;
+  --accent: var(--pink-deep);
+  --accent-strong: #F0879F;
+  --accent-soft: var(--pink);
+  --teal: #6FD9A6;
+  --text: var(--ink);
+  --text-muted: #B0A088;
+  --border: var(--ink);
   --danger: #E8735C;
 }
 
 [data-theme="dark"] body {
-  background: var(--bg);
+  background:
+    radial-gradient(circle, rgba(245, 237, 224, 0.05) 1.5px, transparent 2px) 0 0 / 22px 22px,
+    var(--bg);
 }
 
 [data-theme="dark"] .app__header {
-  background: rgba(18, 18, 18, 0.9);
+  background: rgba(30, 23, 18, 0.88);
 }
 
 /* ============================================================
@@ -952,19 +1006,23 @@ button {
 }
 
 .icon-button {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  border: 1px solid var(--border);
+  border: 2px solid var(--ink);
   background: var(--panel);
-  color: var(--text-muted);
+  color: var(--text);
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  box-shadow: var(--pop-sm);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-.icon-button:hover { background: var(--panel-raised); color: var(--text); }
+.icon-button:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
 
 /* ============================================================
    Quick language pairs
@@ -979,7 +1037,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--border);
+  border: 2px solid var(--ink);
   background: var(--panel-raised);
   color: var(--text);
   border-radius: var(--radius-full);
@@ -1018,9 +1076,9 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--border);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+  border: 2px solid var(--ink);
+  background: var(--yellow);
+  color: var(--yellow-text);
   border-radius: var(--radius-full);
   padding: 5px var(--space-3);
   font-size: 0.78rem;
@@ -1030,7 +1088,7 @@ button {
 .favorite-chip:disabled { opacity: 0.5; cursor: default; }
 
 .favorite-chip__remove {
-  color: var(--accent-strong);
+  color: var(--yellow-text);
   font-size: 0.9rem;
   line-height: 1;
   padding: 0 2px;
@@ -1041,20 +1099,24 @@ button {
 
 .favorite-button {
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text-muted);
+  border: 2px solid var(--ink);
+  background: var(--panel-raised);
+  color: var(--text);
   display: grid;
   place-items: center;
   cursor: pointer;
   padding: 0;
-  transition: background 0.15s ease, color 0.15s ease;
+  box-shadow: var(--pop-sm);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-.favorite-button:hover { background: var(--panel-raised); color: var(--text); }
+.favorite-button:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
 
 /* ============================================================
    Tutorial overlay
@@ -1077,16 +1139,16 @@ button {
 
 .tutorial-card {
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 2.5px solid var(--ink);
   border-radius: var(--radius-md);
   padding: var(--space-6);
   max-width: 360px;
   width: 100%;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--pop-md);
 }
 
 .tutorial-step h3 {
-  font-family: 'IBM Plex Sans JP', sans-serif;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
   font-size: 1.15rem;
   margin: 0 0 var(--space-3);
   color: var(--text);
