@@ -101,7 +101,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-4) var(--space-8);
+  padding: var(--space-5) var(--space-8);
   /* こんにゃくらしい、長方形のブロック。角は少しだけ丸め、辺はわずかに不揃いにして「ぷるん」とした質感を出す */
   border-radius: 10px 14px 12px 8px;
   /* こんにゃくらしい、灰色がかった半透明の茶色 */
@@ -145,13 +145,13 @@ button {
 }
 
 .app__title {
-  font-family: 'IBM Plex Sans JP', sans-serif;
-  font-weight: 600;
-  font-size: 1.2rem;
-  letter-spacing: 0.01em;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  font-weight: 800;
+  font-size: 1.7rem;
+  letter-spacing: 0.02em;
   margin: 0;
   color: #FFFDF6;
-  text-shadow: 0 1px 2px rgba(58, 44, 24, 0.35);
+  text-shadow: 0 2px 3px rgba(58, 44, 24, 0.4);
   position: relative;
   z-index: 1;
 }
@@ -906,7 +906,7 @@ button {
   text-align: center;
 }
 
-.app__title--small { font-size: 1.1rem; margin-bottom: 0; }
+.app__title--small { font-size: 1.35rem; margin-bottom: 0; }
 
 .login-form {
   margin-top: var(--space-5);
