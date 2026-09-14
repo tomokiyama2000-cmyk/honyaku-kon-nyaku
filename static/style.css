@@ -141,6 +141,15 @@ button {
   text-decoration: underline;
 }
 
+.app-footer {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
 .setup-warning {
   background: rgba(213, 67, 46, 0.06);
   border: 1px solid rgba(213, 67, 46, 0.2);
