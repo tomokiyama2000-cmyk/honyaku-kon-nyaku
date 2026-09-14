@@ -561,7 +561,7 @@ button {
   content: "";
   position: absolute;
   border-radius: 50%;
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   pointer-events: none;
 }
 
