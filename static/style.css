@@ -101,9 +101,9 @@ button {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-6);
-  /* 角の丸みを不揃いにして、こんにゃくらしい不定形な「ぷるん」とした輪郭に */
-  border-radius: 42% 58% 60% 40% / 48% 42% 58% 52%;
+  padding: var(--space-4) var(--space-8);
+  /* こんにゃくらしい、長方形のブロック。角は少しだけ丸め、辺はわずかに不揃いにして「ぷるん」とした質感を出す */
+  border-radius: 10px 14px 12px 8px;
   /* こんにゃくらしい、灰色がかった半透明の茶色 */
   background: linear-gradient(155deg, #C7BCA2 0%, #A7987A 55%, #877656 100%);
   box-shadow: var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.3);
@@ -142,16 +142,6 @@ button {
   border-radius: 50%;
   transform: rotate(-15deg);
   pointer-events: none;
-}
-
-.gadget-badge__knob {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.85);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
 }
 
 .app__title {
