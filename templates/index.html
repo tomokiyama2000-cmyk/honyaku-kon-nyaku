@@ -68,6 +68,19 @@
         <span class="record-button__label" id="recordButtonLabel">🎙️ 声を録音する（60秒）</span>
       </button>
     {% endif %}
+
+    <div class="record-duration-picker" id="recordDurationPicker" role="radiogroup" aria-label="録音時間">
+      <span class="record-duration-picker__label">録音時間</span>
+      <div class="record-duration-picker__options">
+        <button type="button" class="duration-option" data-seconds="5">5秒</button>
+        <button type="button" class="duration-option" data-seconds="15">15秒</button>
+        <button type="button" class="duration-option" data-seconds="30">30秒</button>
+        <button type="button" class="duration-option" data-seconds="45">45秒</button>
+        <button type="button" class="duration-option is-active" data-seconds="60">60秒</button>
+      </div>
+      <p class="record-duration-picker__hint">長いほど声質の再現度が上がりますが、短くても登録できます。</p>
+    </div>
+
     <p id="recordStatusText" class="record-status-text"></p>
 
     <div class="setup-card__divider"></div>

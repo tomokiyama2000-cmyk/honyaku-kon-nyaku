@@ -20,6 +20,7 @@ const recordSampleButton = document.getElementById("recordSampleButton");
 const recordButtonLabel = document.getElementById("recordButtonLabel");
 const recordProgress = document.getElementById("recordProgress");
 const recordStatusText = document.getElementById("recordStatusText");
+const durationOptions = document.querySelectorAll(".duration-option");
 const voiceSampleStatus = document.getElementById("voiceSampleStatus");
 const textInputForm = document.getElementById("textInputForm");
 const textInput = document.getElementById("textInput");
@@ -42,7 +43,7 @@ const tutorialSkip = document.getElementById("tutorialSkip");
 let hasVoiceSample = recordSampleButton.classList.contains("record-button--subtle");
 
 function resetRecordButtonLabel() {
-  recordButtonLabel.textContent = hasVoiceSample ? "声を録音し直す" : "🎙️ 声を録音する（60秒）";
+  recordButtonLabel.textContent = hasVoiceSample ? "声を録音し直す" : `🎙️ 声を録音する（${selectedRecordSeconds}秒）`;
 }
 
 // ブラウザの音声認識機能を用意する（Chrome系ブラウザで利用可能）
@@ -635,7 +636,17 @@ clearHistoryButton.addEventListener("click", async () => {
 });
 
 // ---- 声のサンプルを録音する ----
-const RECORD_DURATION_MS = 60000; // 60秒間録音する（ElevenLabsの推奨：1〜2分程度の明瞭な音声）
+let selectedRecordSeconds = 60; // デフォルトは60秒（ElevenLabsの推奨：1〜2分程度の明瞭な音声が理想だが、選択式にしている）
+
+durationOptions.forEach((button) => {
+  button.addEventListener("click", () => {
+    if (isRecording) return; // 録音中は変更できないようにする
+    durationOptions.forEach((b) => b.classList.remove("is-active"));
+    button.classList.add("is-active");
+    selectedRecordSeconds = parseInt(button.dataset.seconds, 10);
+    resetRecordButtonLabel();
+  });
+});
 
 let mediaRecorder = null;
 let recordedChunks = [];
@@ -650,6 +661,7 @@ recordSampleButton.addEventListener("click", async () => {
   }
 
   recordSampleButton.disabled = true;
+  const recordDurationMs = selectedRecordSeconds * 1000;
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -674,7 +686,7 @@ recordSampleButton.addEventListener("click", async () => {
     isRecording = true;
     recordSampleButton.classList.add("recording");
 
-    const totalSeconds = RECORD_DURATION_MS / 1000;
+    const totalSeconds = recordDurationMs / 1000;
     let secondsLeft = totalSeconds;
     recordButtonLabel.textContent = `録音中...（残り${secondsLeft}秒）`;
     recordStatusText.textContent = "はっきりとした声で、自然に話し続けてください。";
@@ -694,7 +706,7 @@ recordSampleButton.addEventListener("click", async () => {
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
         mediaRecorder.stop();
       }
-    }, RECORD_DURATION_MS);
+    }, recordDurationMs);
   } catch (err) {
     recordStatusText.textContent = "マイクを使用できませんでした。マイクの使用許可を確認してください。";
     recordSampleButton.disabled = false;
