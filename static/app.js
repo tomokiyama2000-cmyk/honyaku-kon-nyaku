@@ -552,6 +552,54 @@ textInputForm.addEventListener("submit", async (event) => {
   textInput.focus();
 });
 
+// ---- カメラで文字を読み取る（OCR翻訳） ----
+// 読み取った文字は自動送信せず、テキスト入力欄に反映してユーザーが内容を
+// 確認・修正してから送信できるようにしている（読み取りミスがあり得るため）
+const ocrButton = document.getElementById("ocrButton");
+const ocrImageInput = document.getElementById("ocrImageInput");
+const ocrStatusText = document.getElementById("ocrStatusText");
+
+if (ocrButton && ocrImageInput) {
+  ocrButton.addEventListener("click", () => {
+    ocrImageInput.click();
+  });
+
+  ocrImageInput.addEventListener("change", async () => {
+    const file = ocrImageInput.files[0];
+    ocrImageInput.value = ""; // 同じ画像を連続で選んでもchangeイベントが発火するようにリセット
+    if (!file) return;
+
+    ocrButton.disabled = true;
+    if (ocrStatusText) ocrStatusText.textContent = "文字を読み取っています...";
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const response = await fetch("/api/ocr", { method: "POST", body: formData });
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        if (ocrStatusText) ocrStatusText.textContent = data.error || "文字の読み取りに失敗しました。";
+        return;
+      }
+      if (!data.text) {
+        if (ocrStatusText) ocrStatusText.textContent = "文字を読み取れませんでした。写真を撮り直してみてください。";
+        return;
+      }
+
+      textInput.value = data.text;
+      textInput.focus();
+      textInput.select();
+      if (ocrStatusText) ocrStatusText.textContent = "読み取りました。内容を確認して送信してください。";
+    } catch (err) {
+      if (ocrStatusText) ocrStatusText.textContent = "サーバーとの通信に失敗しました。";
+    } finally {
+      ocrButton.disabled = false;
+    }
+  });
+}
+
 micButton.addEventListener("click", () => {
   if (!isListening) {
     startListening();

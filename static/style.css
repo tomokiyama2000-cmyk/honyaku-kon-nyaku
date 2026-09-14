@@ -598,6 +598,8 @@ button {
 }
 
 /* ---- Text input (alternative to voice) ---- */
+.icon-button--camera { flex-shrink: 0; }
+
 .text-input-row {
   display: flex;
   gap: var(--space-2);

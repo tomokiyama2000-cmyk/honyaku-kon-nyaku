@@ -40,6 +40,7 @@ import db
 from providers.translation import get_translation_provider
 from providers.voice import get_voice_provider
 from providers.speech import get_speech_provider
+from providers.ocr import get_ocr_provider
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "voicebridge-local-dev-secret")
@@ -48,6 +49,7 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "voicebridge-local-dev-secre
 _translation_provider = get_translation_provider()
 _voice_provider = get_voice_provider()
 _speech_provider = get_speech_provider()  # 未設定の場合は None（ブラウザの音声認識のみを使う）
+_ocr_provider = get_ocr_provider()  # 未設定の場合は None（カメラ翻訳機能は無効）
 
 # アップロードできるファイルの最大サイズ（10MB）。
 # 声の録音（15秒程度）は数百KB〜数MB程度で収まるため、これで十分な余裕がある。
@@ -246,6 +248,7 @@ def index():
         has_voice_sample=has_voice_sample,
         username=session.get("username"),
         auto_detect_available=_speech_provider is not None,
+        ocr_available=_ocr_provider is not None,
     )
 
 
@@ -281,6 +284,39 @@ def recognize_audio():
         return jsonify({"error": "音声を認識できませんでした。もう一度お試しください。"}), 200
 
     return jsonify({"text": text, "detected_language_code": detected_language_code})
+
+
+@app.route("/api/ocr", methods=["POST"])
+def ocr_extract_text():
+    """
+    カメラで撮影した写真・アップロードされた画像から文字を読み取る。
+    読み取った文字はそのまま翻訳するのではなく、テキスト入力欄に反映して
+    ユーザーが内容を確認・修正してから送信できるようにする設計。
+    """
+    if _ocr_provider is None:
+        return jsonify({"error": "カメラ翻訳のための文字認識サービスが設定されていません"}), 500
+
+    if "image" not in request.files:
+        return jsonify({"error": "画像データが送られてきませんでした"}), 400
+
+    image_file = request.files["image"]
+    image_bytes = image_file.read()
+
+    if not image_bytes:
+        return jsonify({"error": "画像データが空でした"}), 400
+
+    if len(image_bytes) > 10 * 1024 * 1024:
+        return jsonify({"error": "画像サイズが大きすぎます（10MBまで）"}), 400
+
+    try:
+        text, detected_language_code = _ocr_provider.extract_text(image_bytes)
+    except Exception as e:
+        return jsonify({"error": f"文字の読み取りに失敗しました: {e}"}), 500
+
+    if not text or not text.strip():
+        return jsonify({"error": "文字を読み取れませんでした。写真を撮り直してみてください。"}), 200
+
+    return jsonify({"text": text.strip(), "detected_language_code": detected_language_code})
 
 
 @app.route("/api/save-voice-sample", methods=["POST"])

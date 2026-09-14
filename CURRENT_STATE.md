@@ -11,16 +11,23 @@
 アカウント登録・履歴管理・スマホ対応・GitHub連携まで整った、本格的なアプリになっている。
 音声品質は原文・翻訳文とも「おおむね問題ない」レベルに到達済み（固有名詞の稀な誤読みは許容範囲として合意済み）。
 
-### 【直前の状況】声のトーン機能の不具合修正・表記変更を実施、実機確認待ち
+### 【直前の状況】デザイン刷新＋OCR翻訳を実装、実機確認待ち
 
-- 環境変数エラー（`DEEPL_API_KEY`未登録、フォルダの混同）は解消済み
-- 「明るい」トーンで翻訳文読み上げ時に雑音が出る不具合を修正し、GitHubにpush済み（詳細はDEVELOPMENT_LOG.md参照）
-- 声のトーンの表記を「明るい」→「高」、「落ち着いた」→「低」に変更し、GitHubにpush済み
-- 開発フローを変更：ユーザーがFine-grained Personal Access Tokenを発行し、以降はClaudeが直接GitHubをclone・修正・pushできるようになった
+- 環境変数エラー・声のトーン不具合は解消済み（過去のログ参照）
+- UIデザインを「プレミアム・ミニマル」系に刷新（Linear/Notion的な、白黒+インディゴ1色のみの落ち着いた配色）
+  - 過去に試作した「ポップ・ステッカー」系デザインは `design-patterns/pattern2-pop-sticker/` に、
+    現在のデザインは `design-patterns/pattern1-premium-minimal/` にスナップショット保存済み
+    （`design-patterns/README.md` に、パターンを切り替える方法を記載）
+- 声のサンプル録音時間を60秒固定→5/15/30/45/60秒の選択式に変更
+- カメラでの文字認識翻訳（OCR）を実装。Google Cloud Vision APIを使用（`providers/ocr.py`）。
+  読み取った文字は自動送信せず、テキスト入力欄に反映してユーザーが確認・修正してから送信する設計
+- 開発フローを変更：Fine-grained Personal Access Tokenを使い、Claudeが直接GitHubをclone・修正・pushできるようになった
 - **次のチャットでまず確認すべきこと**：
   1. ユーザーのPCで `git pull` し、最新コードを反映
-  2. 「高」トーンで翻訳文を読み上げても雑音が出なくなったか
-  3. 表記が「標準／😄 高／💼 低」になっているか
+  2. デザイン（プレミアム・ミニマル）が実機で見た目通りに反映されているか
+  3. OCR翻訳機能を使うには、Google Cloud ConsoleでVision APIを有効化し、環境変数`GOOGLE_VISION_API_KEY`
+     （未設定なら`GOOGLE_SPEECH_API_KEY`を代用）を設定する必要がある。実際にカメラで撮影→文字認識→翻訳の
+     一連の流れが動くか確認する
 
 ## 必要な環境変数（毎回のPowerShellウィンドウで設定が必要。頻発するため永続設定を推奨）
 
@@ -29,6 +36,7 @@ $env:DEEPL_API_KEY = "（DeepLのAPIキー）"
 $env:ELEVENLABS_API_KEY = "（ElevenLabsのAPIキー）"
 $env:SPEECH_PROVIDER = "google"
 $env:GOOGLE_SPEECH_API_KEY = "（Google Cloud Speech-to-TextのAPIキー）"
+$env:GOOGLE_VISION_API_KEY = "（Google Cloud Vision APIのAPIキー。未設定でもGOOGLE_SPEECH_API_KEYと同じ値が使われる）"
 ```
 ※実際のキーの値は、ユーザー本人が把握している（このファイルには機密情報として記載しない）
 
@@ -81,7 +89,7 @@ $env:GOOGLE_SPEECH_API_KEY = "（Google Cloud Speech-to-TextのAPIキー）"
 1. テキスト入力での翻訳 → 実装済み
 2. 翻訳履歴の保存（一括・個別削除） → 実装済み
 3. よく使うフレーズの保存・お気に入り登録 → 未着手
-4. カメラでの文字認識翻訳（OCR） → 未着手
+4. カメラでの文字認識翻訳（OCR） → 実装済み（Google Cloud Vision API、環境変数の設定が必要）
 5. オフライン対応 → 優先度低、未着手
 
 ## 次にやること
