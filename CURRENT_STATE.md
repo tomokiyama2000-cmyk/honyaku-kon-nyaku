@@ -11,23 +11,18 @@
 アカウント登録・履歴管理・スマホ対応・GitHub連携まで整った、本格的なアプリになっている。
 音声品質は原文・翻訳文とも「おおむね問題ない」レベルに到達済み（固有名詞の稀な誤読みは許容範囲として合意済み）。
 
-### 【直前の状況】デザイン刷新＋OCR翻訳を実装、実機確認待ち
+### 【直前の状況】Google Cloudへの常時稼働デプロイが完了
 
-- 環境変数エラー・声のトーン不具合は解消済み（過去のログ参照）
-- UIデザインを「プレミアム・ミニマル」系に刷新（Linear/Notion的な、白黒+インディゴ1色のみの落ち着いた配色）
-  - 過去に試作した「ポップ・ステッカー」系デザインは `design-patterns/pattern2-pop-sticker/` に、
-    現在のデザインは `design-patterns/pattern1-premium-minimal/` にスナップショット保存済み
-    （`design-patterns/README.md` に、パターンを切り替える方法を記載）
-- 声のサンプル録音時間を60秒固定→5/15/30/45/60秒の選択式に変更
-- カメラでの文字認識翻訳（OCR）を実装。Google Cloud Vision APIを使用（`providers/ocr.py`）。
-  読み取った文字は自動送信せず、テキスト入力欄に反映してユーザーが確認・修正してから送信する設計
-- 開発フローを変更：Fine-grained Personal Access Tokenを使い、Claudeが直接GitHubをclone・修正・pushできるようになった
+- `https://honyakukonnyaku.app` で、パソコンを起動していなくてもスマートフォン単体からアクセスできる状態を実機で確認済み
+- デプロイ先：Google Compute Engine（e2-microインスタンス、us-west1、永久無料枠を利用。実質$0/月の見込み）
+- ドメイン：`honyakukonnyaku.app`（Namecheapで取得、年間登録）
+- HTTPS化：Caddyによるリバースプロキシ＋Let's Encrypt自動証明書
+- サーバー上のアプリはDockerコンテナとして起動（`--restart unless-stopped`）。データ（DB・声のサンプル）はコンテナ外の`~/data`に永続化
+- ローカルPC上での開発（`C:\Users\tomok\Downloads\webapp`でのgit pull運用）は、今後も**コードの開発・確認用としては継続**するが、実際にユーザーが使うのはクラウド版
 - **次のチャットでまず確認すべきこと**：
-  1. ユーザーのPCで `git pull` し、最新コードを反映
-  2. デザイン（プレミアム・ミニマル）が実機で見た目通りに反映されているか
-  3. OCR翻訳機能を使うには、Google Cloud ConsoleでVision APIを有効化し、環境変数`GOOGLE_VISION_API_KEY`
-     （未設定なら`GOOGLE_SPEECH_API_KEY`を代用）を設定する必要がある。実際にカメラで撮影→文字認識→翻訳の
-     一連の流れが動くか確認する
+  1. クラウド版にコード変更を反映する際は、これまでのGitHub push運用に加えて、**VM上でも `git pull` → `docker build` → `docker run`（コンテナの再作成）が必要**であることを踏まえた運用フローを検討する
+  2. Google Cloudの無料枠使用状況（特に外部への通信量が月1GBを超えていないか）を確認
+  3. 商用サービス化に向けた残課題（法的基盤・プライバシーポリシー等）に進むかどうか、ユーザーの意向を確認
 
 ## 必要な環境変数（毎回のPowerShellウィンドウで設定が必要。頻発するため永続設定を推奨）
 
@@ -50,8 +45,8 @@ $env:GOOGLE_VISION_API_KEY = "（Google Cloud Vision APIのAPIキー。未設定
 - 声のクローン以外の読み上げ：edge-tts（無料、自然な発音）
 - 音声認識：ブラウザのWeb Speech API（サーバー側では処理していない）
 - フロントエンド：`webapp/templates/`, `webapp/static/`（Flask + 素のHTML/CSS/JS）
-- コード管理：GitHub（非公開リポジトリ `https://github.com/tomokiyama2000-cmyk/-`）。
-  Claudeがコードを更新した際は都度pushし、ユーザーは`git pull`だけで最新化できる
+- コード管理：GitHub（`https://github.com/tomokiyama2000-cmyk/honyaku-kon-nyaku`、現在は公開リポジトリ）。
+  Claudeが直接リポジトリをclone・修正・pushできる（Fine-grained Personal Access Tokenを都度発行してもらう運用）
 
 ### 設計上の重要なポイント：プロバイダー差し替え可能設計
 
