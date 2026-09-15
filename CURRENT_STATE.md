@@ -11,18 +11,15 @@
 アカウント登録・履歴管理・スマホ対応・GitHub連携まで整った、本格的なアプリになっている。
 音声品質は原文・翻訳文とも「おおむね問題ない」レベルに到達済み（固有名詞の稀な誤読みは許容範囲として合意済み）。
 
-### 【直前の状況】Google Cloudへの常時稼働デプロイが完了
+### 【直前の状況】合い言葉によるアクセス制限を追加、クラウド版で稼働中
 
-- `https://honyakukonnyaku.app` で、パソコンを起動していなくてもスマートフォン単体からアクセスできる状態を実機で確認済み
-- デプロイ先：Google Compute Engine（e2-microインスタンス、us-west1、永久無料枠を利用。実質$0/月の見込み）
-- ドメイン：`honyakukonnyaku.app`（Namecheapで取得、年間登録）
-- HTTPS化：Caddyによるリバースプロキシ＋Let's Encrypt自動証明書
-- サーバー上のアプリはDockerコンテナとして起動（`--restart unless-stopped`）。データ（DB・声のサンプル）はコンテナ外の`~/data`に永続化
-- ローカルPC上での開発（`C:\Users\tomok\Downloads\webapp`でのgit pull運用）は、今後も**コードの開発・確認用としては継続**するが、実際にユーザーが使うのはクラウド版
+- `https://honyakukonnyaku.app` で、パソコン不要・常時アクセス可能な状態が稼働中（Google Compute Engine、実質$0/月）
+- 新規登録に合い言葉（環境変数`REGISTRATION_CODE`）を必須化し、第三者による無断登録・API利用料の意図しない消費を防止済み
+- クラウド版への反映フローを確立：VM上で `git pull` → `docker build -t honyaku-konnyaku .` →
+  `docker stop honyaku-konnyaku` → `docker rm honyaku-konnyaku` → `docker run ...`（全環境変数を指定）
 - **次のチャットでまず確認すべきこと**：
-  1. クラウド版にコード変更を反映する際は、これまでのGitHub push運用に加えて、**VM上でも `git pull` → `docker build` → `docker run`（コンテナの再作成）が必要**であることを踏まえた運用フローを検討する
-  2. Google Cloudの無料枠使用状況（特に外部への通信量が月1GBを超えていないか）を確認
-  3. 商用サービス化に向けた残課題（法的基盤・プライバシーポリシー等）に進むかどうか、ユーザーの意向を確認
+  1. 特に無し。安定稼働中。ユーザーの次の要望（商用サービス化の残課題、機能追加、デザイン調整等）を確認して進める
+  2. コード修正が発生した場合は、GitHubへのpushに加えて、上記のクラウド版反映フローも必ず案内すること
 
 ## 必要な環境変数（毎回のPowerShellウィンドウで設定が必要。頻発するため永続設定を推奨）
 
