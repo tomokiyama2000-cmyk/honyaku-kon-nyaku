@@ -17,6 +17,9 @@
   <p class="app__tagline">新しいアカウントを作成します</p>
 
   <form method="POST" class="login-form">
+    {% if registration_code_required %}
+      <input type="text" name="registration_code" placeholder="合い言葉" autocomplete="off">
+    {% endif %}
     <input type="text" name="username" placeholder="ユーザー名" autofocus>
     <input type="password" name="password" placeholder="パスワード（6文字以上）">
     <input type="password" name="password_confirm" placeholder="パスワード（確認用）">

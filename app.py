@@ -85,12 +85,19 @@ def require_login():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     error = None
+    # 環境変数 REGISTRATION_CODE が設定されている場合のみ、合い言葉を必須にする
+    # （未設定のローカル開発環境では、これまで通り誰でも登録できる）
+    registration_code_required = bool(os.environ.get("REGISTRATION_CODE"))
+
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
         password_confirm = request.form.get("password_confirm") or ""
+        registration_code = request.form.get("registration_code") or ""
 
-        if not username or not password:
+        if registration_code_required and registration_code != os.environ.get("REGISTRATION_CODE"):
+            error = "合い言葉が正しくありません。"
+        elif not username or not password:
             error = "ユーザー名とパスワードを入力してください。"
         elif len(username) > 50:
             error = "ユーザー名は50文字以内にしてください。"
@@ -107,7 +114,7 @@ def register():
                 session["username"] = username
                 return redirect(url_for("index"))
 
-    return render_template("register.html", error=error)
+    return render_template("register.html", error=error, registration_code_required=registration_code_required)
 
 
 @app.route("/login", methods=["GET", "POST"])
